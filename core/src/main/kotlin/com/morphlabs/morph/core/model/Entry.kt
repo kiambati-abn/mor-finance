@@ -33,14 +33,14 @@ data class Entry(
     /** M-Pesa transaction code, e.g. "UJMJ0BKZN2". */
     val code: String? = null,
     val smsBody: String? = null,
+    /** The "what was it" account: a category, savings, debt... (Uncategorized while pending). */
+    val categoryId: Long? = null,
+    /** M-Pesa balance the SMS reported after this transaction. */
+    val smsBalance: Long? = null,
 ) {
     init {
         require(lines.sumOf { it.amount } == 0L) { "Entry '$description' is unbalanced: $lines" }
     }
-
-    /** The account that "explains" this entry: the non-wallet side, or the Uncategorized line while pending. */
-    fun categoryLine(moneyAccountIds: Set<Long>): Line? =
-        lines.filter { it.accountId !in moneyAccountIds }.maxByOrNull { kotlin.math.abs(it.amount) }
 
     /** Total that left or entered the wallet side (absolute, cents). */
     fun size(): Long = lines.filter { it.amount > 0 }.sumOf { it.amount }

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="morph_purple">#382078</color>
+    <color name="morph_gold">#E8A020</color>
+    <color name="morph_icon_bg">#F7F4FC</color>
+    <color name="morph_bg_light">#FBF9FE</color>
+    <color name="morph_bg_dark">#120B1F</color>
+</resources>

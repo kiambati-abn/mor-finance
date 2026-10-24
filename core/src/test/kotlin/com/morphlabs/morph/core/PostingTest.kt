@@ -60,9 +60,10 @@ class PostingTest {
 
     @Test fun recategorizeKeepsWalletAndFees() {
         val e = post(Fixtures.SEND_WITH_FEE)
-        val fixed = Posting.recategorize(e, role(SystemRole.UNCATEGORIZED), hint("friends"))
+        val fixed = Posting.recategorize(e, hint("friends"))
         assertEquals(EntryStatus.CONFIRMED, fixed.status)
         assert(fixed.lines.contains(Line(hint("friends"), 20000)))
+        assertEquals(hint("friends"), fixed.categoryId)
         assert(fixed.lines.contains(Line(role(SystemRole.TRANSACTION_COSTS), 700)))
     }
 

@@ -76,6 +76,8 @@ object Posting {
             kind = sms.kind,
             code = sms.code,
             smsBody = sms.raw,
+            categoryId = other,
+            smsBalance = sms.balance,
         )
     }
 
@@ -89,6 +91,7 @@ object Posting {
             source = EntrySource.MANUAL,
             counterparty = description,
             counterpartyKey = "manual:" + description.trim().uppercase(),
+            categoryId = toId,
         )
 
     /** Sets an account's starting balance (positive = you have it / you owe it). */
@@ -100,15 +103,19 @@ object Posting {
             lines = listOf(Line(accountId, signed), Line(role(SystemRole.OPENING_BALANCE), -signed)),
             status = EntryStatus.CONFIRMED,
             source = EntrySource.SYSTEM,
+            categoryId = accountId,
         )
     }
 
-    /** Re-points the Uncategorized (or previous category) line to [newAccountId]. Wallet and fee lines stay as they are. */
-    fun recategorize(entry: Entry, oldAccountId: Long, newAccountId: Long, status: EntryStatus = EntryStatus.CONFIRMED): Entry =
-        entry.copy(
-            lines = entry.lines.map { if (it.accountId == oldAccountId) it.copy(accountId = newAccountId) else it },
+    /** Re-points the category line (Uncategorized while pending) to [newAccountId]. Wallet and fee lines stay as they are. */
+    fun recategorize(entry: Entry, newAccountId: Long, status: EntryStatus = EntryStatus.CONFIRMED): Entry {
+        val old = entry.categoryId ?: return entry.copy(status = status)
+        return entry.copy(
+            lines = entry.lines.map { if (it.accountId == old) it.copy(accountId = newAccountId) else it },
             status = status,
+            categoryId = newAccountId,
         )
+    }
 
     fun describe(sms: MpesaSms, outgoing: Boolean = sms.outgoing): String {
         val who = sms.counterparty?.let(::titleCase)
