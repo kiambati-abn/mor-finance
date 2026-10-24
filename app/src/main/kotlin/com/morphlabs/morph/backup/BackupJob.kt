@@ -20,6 +20,8 @@ class BackupJob : JobService() {
 
     override fun onStartJob(params: JobParameters): Boolean {
         Thread {
+            // The daily job also lets Morph re-check its guesses with what it has learned.
+            runCatching { MorphRepo.get(applicationContext).relearnIfDue() }
             val error = runBackup(applicationContext)
             jobFinished(params, error != null) // retry later if it failed
         }.start()

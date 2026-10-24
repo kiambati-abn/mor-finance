@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         Thread {
             val repo = MorphRepo.get(app)
             if (repo.onboarded && InboxImporter.hasPermission(app)) InboxImporter.import(app, repo.lastSmsDate)
+            repo.relearnIfDue()
             BackupJob.backupIfDue(app)
         }.start()
     }

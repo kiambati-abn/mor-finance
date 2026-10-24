@@ -290,6 +290,36 @@ class MorphRepo private constructor(context: Context) {
         return filed to snapshot().unsure.size
     }
 
+    /**
+     * "Keep improving": with everything learned since, re-check the waiting pile (Auto-sort) and
+     * Morph's own earlier guesses. A guess moves only when Morph is now clearly sure (75%+) of a
+     * different place and surer than before. Your own choices are never touched.
+     * Runs at most every 6 hours. Returns how many changed.
+     */
+    @Synchronized
+    fun relearnIfDue(force: Boolean = false): Int {
+        val now = System.currentTimeMillis()
+        if (!force && now - (meta(KEY_RELEARN)?.toLongOrNull() ?: 0L) < 6 * 3600 * 1000L) return 0
+        var changedCount = autoSortPending()
+        val s = snapshot()
+        for (e in s.entries.filter { it.status == EntryStatus.AUTO && it.source == EntrySource.SMS }) {
+            val g = s.reconsider(e)
+            val best = g.suggestions.firstOrNull()?.accountId ?: continue
+            if (best == e.categoryId || g.confidence < 0.75 || g.confidence <= (e.confidence ?: 0.0)) continue
+            if (s.categories(e).size > 1) continue // split entries were shaped by hand
+            replaceLines(Posting.recategorize(e, best, EntryStatus.AUTO).copy(confidence = g.confidence))
+            changedCount++
+        }
+        setMeta(KEY_RELEARN, now.toString())
+        setMeta(KEY_RELEARN_RESULT, "$changedCount")
+        if (changedCount > 0) changed()
+        return changedCount
+    }
+
+    /** How many the last "Keep improving" run changed, and when. */
+    val lastRelearn: Pair<Long, Int>?
+        get() = meta(KEY_RELEARN)?.toLongOrNull()?.let { it to (meta(KEY_RELEARN_RESULT)?.toIntOrNull() ?: 0) }
+
     /** "Yes, Morph got it right": turns an auto-filed entry into a confirmed one. */
     fun confirm(entryId: Long): Game.Reward {
         val e = snapshot().entries.firstOrNull { it.id == entryId } ?: return Game.Reward(0, emptyList())
@@ -748,6 +778,8 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_BACKUP_URI = "backup_uri"
         private const val KEY_AUTOPILOT = "autopilot"
         private const val KEY_BACKUP_EVERY = "backup_every_days"
+        private const val KEY_RELEARN = "relearn_at"
+        private const val KEY_RELEARN_RESULT = "relearn_result"
         private const val KEY_ENVELOPES_START = "envelopes_start"
         private const val KEY_BUDGET_VIEW = "budget_view"
         private const val KEY_CASH_DONE = "cash_done"

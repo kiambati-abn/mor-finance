@@ -89,12 +89,18 @@ class Snapshot(
                     (e.confidence ?: 1.0) < 0.55 -> 0.25
                     else -> 0.6
                 },
-                minute = minute(e), weekend = weekend(e),
+                minute = minute(e), weekend = weekend(e), entryId = e.id,
             )
         }
     }
 
-    fun categorizer(): Categorizer = Categorizer(accounts, observations())
+    private val allObservations: List<com.morphlabs.morph.core.learn.Observation> by lazy { observations() }
+
+    fun categorizer(): Categorizer = Categorizer(accounts, allObservations)
+
+    /** A fresh opinion on an entry Morph filed itself: what would it say without that entry's own vote? */
+    fun reconsider(e: Entry): Guess =
+        Categorizer(accounts, allObservations.filter { it.entryId != e.id }).guess(query(e), 3)
 
     fun guess(e: Entry, limit: Int = 3, autopilot: Double? = null): Guess = categorizer().guess(query(e), limit, autopilot)
 

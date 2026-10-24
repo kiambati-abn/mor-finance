@@ -219,6 +219,19 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (s.unsure.isNotEmpty()) Text("🤔 ${s.unsure.size} auto-sorted to check in the Sort tab", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    Gap(6)
+                    Text("🧠 Keeps improving: a few times a day Morph re-checks the waiting pile and its own earlier guesses with what it has learned. Your choices are never changed.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    repo.lastRelearn?.let { (at, n) ->
+                        Text("Last check: ${com.morphlabs.morph.ui.components.whenText(at, s.zone)} · ${if (n == 0) "nothing to change" else "$n improved"}",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    TextButton(onClick = {
+                        scope.launch {
+                            val n = withContext(Dispatchers.IO) { repo.relearnIfDue(force = true) }
+                            Toast.makeText(ctx, if (n > 0) "Improved $n" else "Nothing to change", Toast.LENGTH_SHORT).show()
+                        }
+                    }) { Text("Re-check now") }
                 }
             }
         }

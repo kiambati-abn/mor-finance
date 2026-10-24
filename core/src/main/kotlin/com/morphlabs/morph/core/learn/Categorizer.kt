@@ -24,6 +24,8 @@ data class Observation(
     /** Minute of the day (0..1439), for routines like "the 7:30 AM bus". */
     val minute: Int = hour * 60,
     val weekend: Boolean? = null,
+    /** The entry this came from, so a re-check can leave it out (it shouldn't vote for itself). */
+    val entryId: Long = 0,
 )
 
 /** What Morph wants to know about a new transaction. */
