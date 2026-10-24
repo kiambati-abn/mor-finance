@@ -12,7 +12,20 @@ import com.morphlabs.morph.data.MorphRepo
  */
 object InboxImporter {
 
-    data class Result(val read: Int, val added: Int, val toSort: Int)
+    /**
+     * @param read M-Pesa messages looked at, @param added new transactions, @param known
+     * transactions already in Morph (skipped, not lost), @param notTx messages that aren't transactions.
+     */
+    data class Result(val read: Int, val added: Int, val toSort: Int, val known: Int = 0, val notTx: Int = 0) {
+        /** One plain sentence for the person: never just "0" when the transactions are actually there. */
+        fun summary(): String = when {
+            read == 0 -> "No M-Pesa messages on this phone for those dates."
+            added == 0 && known > 0 -> "All $known transactions from those dates are already in Morph."
+            known > 0 -> "Found $added new transactions ($known were already in Morph)."
+            added == 0 -> "Read $read M-Pesa messages, but none were transactions."
+            else -> "Found $added M-Pesa transactions."
+        }
+    }
 
     fun hasPermission(context: Context): Boolean =
         context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
@@ -47,6 +60,8 @@ object InboxImporter {
         var read = 0
         var added = 0
         var toSort = 0
+        var known = 0
+        var notTx = 0
         var newest = repo.lastSmsDate
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
@@ -64,13 +79,13 @@ object InboxImporter {
                 if (r != null) {
                     added++
                     if (r.entry.status == com.morphlabs.morph.core.model.EntryStatus.NEEDS_REVIEW) toSort++
-                }
+                } else if (repo.isKnown(body)) known++ else notTx++
                 if (date > newest) newest = date
                 if (read % 25 == 0) onProgress(read)
             }
         }
         repo.finishBatch()
         if (newest > repo.lastSmsDate) repo.lastSmsDate = newest
-        return Result(read, added, toSort)
+        return Result(read, added, toSort, known, notTx)
     }
 }

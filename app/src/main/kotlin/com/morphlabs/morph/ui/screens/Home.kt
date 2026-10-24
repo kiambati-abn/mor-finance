@@ -74,7 +74,7 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         scope.launch {
             val r = withContext(Dispatchers.IO) { InboxImporter.refresh(ctx) }
             refreshing = false
-            android.widget.Toast.makeText(ctx, if (r.added > 0) "Found ${r.added} new" else "Up to date ✓", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(ctx, if (r.added > 0) "Found ${r.added} new" else "Up to date ✓ (${r.known} already in Morph)", android.widget.Toast.LENGTH_SHORT).show()
         }
     }
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.fillMaxSize()) {

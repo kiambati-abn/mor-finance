@@ -45,7 +45,7 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
     val current = repo.startDate?.let { java.time.Instant.ofEpochMilli(it).atZone(repo.zone).toLocalDate() }
     var busy by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
-    var pulled by remember { mutableStateOf<Int?>(null) }
+    var pulled by remember { mutableStateOf<InboxImporter.Result?>(null) }
     var picking by remember { mutableStateOf(false) }
     fun ms(d: LocalDate) = d.atStartOfDay(repo.zone).toInstant().toEpochMilli()
 
@@ -77,17 +77,18 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
                                     val from = if (months == 0L) 0L else ms(current.minusMonths(months))
                                     val r = withContext(Dispatchers.IO) { InboxImporter.pullEarlier(ctx, from) { progress = it } }
                                     busy = false
-                                    pulled = r.added
+                                    pulled = r
                                 }
                             }, label = { Text(l) })
                         }
                     }
                 }
                 if (busy) { Gap(8); Row { CircularProgressIndicator(); Text("  Read $progress messages…") } }
-                pulled?.let { n ->
+                pulled?.let { r ->
                     Gap(8)
-                    Text("Pulled in $n transactions.", fontWeight = FontWeight.SemiBold)
-                    if (n > 0) TextButton(onClick = {
+                    Text(r.summary(), fontWeight = FontWeight.SemiBold)
+                    if (r.known > 0) Text("They're shown again now that the start date is earlier.", style = MaterialTheme.typography.bodySmall)
+                    if (r.added > 0 || r.known > 0) TextButton(onClick = {
                         scope.launch {
                             val (filed, unsure) = withContext(Dispatchers.IO) { repo.sortEverything() }
                             Toast.makeText(ctx, "Sorted $filed · $unsure flagged 🤔 to check", Toast.LENGTH_LONG).show()
@@ -105,7 +106,7 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
             busy = true
             scope.launch {
                 val r = withContext(Dispatchers.IO) { InboxImporter.pullEarlier(ctx, ms(d)) { progress = it } }
-                busy = false; pulled = r.added
+                busy = false; pulled = r
             }
         } else repo.startDate = ms(d)
     }

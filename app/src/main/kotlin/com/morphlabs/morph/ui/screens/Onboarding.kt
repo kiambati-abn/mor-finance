@@ -236,7 +236,7 @@ private fun History(repo: MorphRepo, next: () -> Unit) {
         r != null -> {
             MorphCard {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Found ${r.added} M-Pesa transactions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(r.summary(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Gap(4)
                     Text("Morph filed ${r.added - r.toSort} on its own. ${r.toSort} are waiting for you in the ⭐ Sort tab, where each one earns stars.")
                 }

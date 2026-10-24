@@ -697,6 +697,12 @@ class MorphRepo private constructor(context: Context) {
 
     // ---- storage details --------------------------------------------------------------------
 
+    /** True when this M-Pesa SMS is already a transaction in Morph. */
+    fun isKnown(body: String): Boolean {
+        val sms = MpesaParser.parse(body) ?: return false
+        return exists(sms.code?.let { "$it:${sms.kind}" } ?: ("body:" + sha1(MpesaParser.clean(body))))
+    }
+
     private fun exists(dedupe: String): Boolean =
         db.rawQuery("SELECT 1 FROM entries WHERE dedupe = ? LIMIT 1", arrayOf(dedupe)).use { it.moveToFirst() }
 

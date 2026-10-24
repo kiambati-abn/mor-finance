@@ -282,7 +282,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                     SettingRow("🔄  Re-check SMS inbox") {
                         scope.launch {
                             val r = withContext(Dispatchers.IO) { InboxImporter.import(ctx, 0) }
-                            Toast.makeText(ctx, "Checked ${r.read} messages, ${r.added} new", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(ctx, r.summary(), Toast.LENGTH_LONG).show()
                         }
                     }
                     SettingRow("💾  Back up to a file (Drive, etc.)") { exportLauncher.launch("morph-backup-${d.today}.json") }
