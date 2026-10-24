@@ -79,6 +79,24 @@ class Patterns(private val accounts: List<Account>, private val entries: List<En
         }.sortedByDescending { it.thisMonth }
     }
 
+    /**
+     * Each category in [from]..[to] (inclusive days) against the same number of days just before,
+     * e.g. the last 30 days vs the 30 before. Reuses [Trend]: thisMonth = this period, usual = the one before.
+     */
+    fun versusBefore(from: LocalDate, to: LocalDate): List<Trend> {
+        val days = ChronoUnit.DAYS.between(from, to) + 1
+        val a = start(from); val b = start(to.plusDays(1))
+        val pa = start(from.minusDays(days))
+        val now = real.filter { it.timestamp in a until b }
+        val before = real.filter { it.timestamp in pa until a }
+        return expenseIds.mapNotNull { id ->
+            val acc = byId[id] ?: return@mapNotNull null
+            val n = now.sumOf { spend(it, id) }
+            val p = before.sumOf { spend(it, id) }
+            if (n == 0L && p == 0L) null else Trend(acc, n, p)
+        }.sortedByDescending { it.thisMonth }
+    }
+
     /** Average spending per weekday (Mon..Sun) over the last [days] days. */
     fun byWeekday(today: LocalDate, days: Int): List<Period> {
         val totals = LongArray(7); val counts = IntArray(7)

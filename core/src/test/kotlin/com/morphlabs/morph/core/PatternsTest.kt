@@ -108,4 +108,15 @@ class PatternsTest {
         assertEquals("CLUB", why.first().biggest!!.counterparty)
         assert(why.any { it.account.id == hint("transport") && it.change < 0 })
     }
+
+    @Test fun periodVersusThePeriodBefore() {
+        val entries = listOf(
+            pay(today.minusDays(5), 13, 1_000_00, hint("food"), "CAFE"),
+            pay(today.minusDays(12), 13, 400_00, hint("food"), "CAFE"),
+        )
+        val t = p(entries).versusBefore(today.minusDays(6), today).single()
+        assertEquals(1_000_00L, t.thisMonth)
+        assertEquals(400_00L, t.usual)
+        assertEquals(1.5, t.change!!, 0.001)
+    }
 }

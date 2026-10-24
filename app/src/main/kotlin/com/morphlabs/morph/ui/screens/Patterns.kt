@@ -48,37 +48,64 @@ private val dayFmt = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
 @Composable
 fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccount: Account? = null) {
     val today = repo.dayOf(System.currentTimeMillis())
-    var days by rememberSaveable { mutableIntStateOf(90) }
+    // The period every section follows: a preset, or a custom from–to range.
+    var preset by rememberSaveable { mutableStateOf("90") }
+    var customFrom by rememberSaveable { mutableStateOf<String?>(null) }
+    var customTo by rememberSaveable { mutableStateOf<String?>(null) }
+    var picking by remember { mutableStateOf(0) } // 1 = from, 2 = to
     var drill by remember { mutableStateOf(startAccount) }
     var open by remember { mutableStateOf<com.morphlabs.morph.core.model.Entry?>(null) }
+    val firstDay = remember(s) {
+        s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
+            ?.let { java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate() } ?: today
+    }
+    val rangeEnd = if (preset == "custom") customTo?.let { java.time.LocalDate.parse(it) } ?: today else today
+    val rangeStart = when (preset) {
+        "30" -> today.minusDays(29)
+        "180" -> today.minusDays(179)
+        "365" -> today.minusDays(364)
+        "all" -> firstDay
+        "custom" -> customFrom?.let { java.time.LocalDate.parse(it) } ?: today.minusDays(29)
+        else -> today.minusDays(89)
+    }.let { if (it.isAfter(rangeEnd)) rangeEnd else it }
+    val days = (java.time.temporal.ChronoUnit.DAYS.between(rangeStart, rangeEnd) + 1).toInt()
     val p = remember(s) { Patterns(s.accounts, s.entries, s.zone) }
-    val monthly = remember(p) { p.monthly(today) }
-    val trends = remember(p) { p.trends(today) }
-    val week = remember(p, days) { p.byWeekday(today, days) }
-    val tod = remember(p, days) { p.byTimeOfDay(today, days) }
-    val places = remember(p, days) { p.topPlaces(today, days) }
-    val regulars = remember(p) { p.regulars(today) }
-    val unusual = remember(p, days) { p.unusual(today, days) }
-    val after = remember(p, days) { p.afterIncome(today, days) }
+    val key = "$rangeStart..$rangeEnd"
+    val monthCount = (java.time.temporal.ChronoUnit.MONTHS.between(java.time.YearMonth.from(rangeStart), java.time.YearMonth.from(rangeEnd)) + 1).toInt().coerceIn(2, 24)
+    val monthly = remember(p, key) { p.monthly(rangeEnd, monthCount) }
+    val trends = remember(p, key) { p.versusBefore(rangeStart, rangeEnd) }
+    val week = remember(p, key) { p.byWeekday(rangeEnd, days) }
+    val tod = remember(p, key) { p.byTimeOfDay(rangeEnd, days) }
+    val places = remember(p, key) { p.topPlaces(rangeEnd, days) }
+    val regulars = remember(p, key) { p.regulars(rangeEnd, maxOf(days, 30)) }
+    val unusual = remember(p, key) { p.unusual(rangeEnd, days) }
+    val after = remember(p, key) { p.afterIncome(rangeEnd, days) }
+    val spentInRange = remember(s, key) {
+        com.morphlabs.morph.core.insight.Spending(s.accounts, s.entries, s.zone).total(
+            rangeStart.atStartOfDay(s.zone).toInstant().toEpochMilli(), rangeEnd.plusDays(1).atStartOfDay(s.zone).toInstant().toEpochMilli())
+    }
     val openList = com.morphlabs.morph.ui.LocalOpenList.current
-    val from = today.minusDays(days - 1L).atStartOfDay(s.zone).toInstant().toEpochMilli()
-    fun who(key: String, name: String, since: Long? = null) = openList(com.morphlabs.morph.ui.TxFilter(name, counterpartyKey = key, from = since))
+    val from = rangeStart.atStartOfDay(s.zone).toInstant().toEpochMilli()
+    val to = rangeEnd.plusDays(1).atStartOfDay(s.zone).toInstant().toEpochMilli()
+    val rangeFmt = java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH)
+    fun who(key: String, name: String, since: Long? = null) = openList(com.morphlabs.morph.ui.TxFilter(name, counterpartyKey = key, from = since, to = to))
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         BackHeader("Patterns", onBack)
         LazyColumn(Modifier.padding(horizontal = 16.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val allDays = remember(s) {
-                        s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
-                            ?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate(), today).toInt() + 1 } ?: 30
+                    for ((k, l) in listOf("30" to "30d", "90" to "3m", "180" to "6m", "365" to "Year", "all" to "All")) {
+                        FilterChip(selected = preset == k, onClick = { preset = k }, label = { Text(l) })
                     }
-                    for ((d, l) in listOf(30 to "30d", 90 to "3m", 180 to "6m", 365 to "Year", maxOf(allDays, 1) to "All")) {
-                        FilterChip(selected = days == d, onClick = { days = d }, label = { Text(l) })
-                    }
+                    FilterChip(selected = preset == "custom", onClick = { picking = 1 }, label = { Text("📅 Range") })
                 }
+                Text(
+                    "${rangeFmt.format(rangeStart)} – ${rangeFmt.format(rangeEnd)} · $days days · ${Money.format(spentInRange)} spent",
+                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 6.dp),
+                )
                 MorphCard { Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val window = remember(p, days) { p.byWeekday(today, days).sumOf { it.total } / 7 }
+                    val window = spentInRange / days.coerceAtLeast(1)
                     for ((l, v) in listOf("Avg / day" to window, "Avg / week" to window * 7, "Avg / month" to (window * 30.44).toLong())) {
                         Column(Modifier.weight(1f)) {
                             Text(l, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -86,11 +113,11 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                         }
                     }
                 } }
-                Text("Averages over the period above.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Averages over the period above. Every section below follows it too.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SectionTitle("Spending by month")
                 MorphCard { Column(Modifier.padding(16.dp)) {
                     BarChart(monthly.map { it.label to it.total }) { i ->
-                        val month = java.time.YearMonth.from(today).minusMonths((monthly.lastIndex - i).toLong())
+                        val month = java.time.YearMonth.from(rangeEnd).minusMonths((monthly.lastIndex - i).toLong())
                         TextButton(onClick = {
                             openList(com.morphlabs.morph.ui.TxFilter("Spending · ${monthly[i].label}", spendingOnly = true,
                                 from = month.atDay(1).atStartOfDay(s.zone).toInstant().toEpochMilli(),
@@ -109,23 +136,23 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                     val prev = monthly.dropLast(1).filter { it.total > 0 }
                     if (prev.isNotEmpty()) {
                         val avg = prev.sumOf { it.total } / prev.size
-                        Text("Your average month: ${Money.format(avg)}. This month so far: ${Money.format(monthly.last().total)}.", style = MaterialTheme.typography.bodySmall)
+                        Text("Average month: ${Money.format(avg)}. Last month shown: ${Money.format(monthly.last().total)}.", style = MaterialTheme.typography.bodySmall)
                     }
                 } }
             }
             if (trends.isNotEmpty()) item {
-                SectionTitle("This month vs your usual")
+                SectionTitle("This period vs the one before")
                 MorphCard { Column(Modifier.padding(16.dp)) {
-                    Text("Compared fairly: the same number of days from your last 3 months. Tap one to dig in.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Compared with the $days days just before. Tap one to dig in.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Gap(4)
                     val max = trends.maxOf { maxOf(it.thisMonth, it.usual) }
                     for (t in trends.take(8)) {
                         val c = t.change
                         val sub = when {
-                            c == null -> "New this month"
-                            c > 0.15 -> "▲ ${Patterns.pct(c)} more than usual (${Money.format(t.usual)})"
-                            c < -0.15 -> "▼ ${Patterns.pct(c)} less than usual (${Money.format(t.usual)})"
-                            else -> "About usual"
+                            c == null -> "New in this period"
+                            c > 0.15 -> "▲ ${Patterns.pct(c)} more than before (${Money.format(t.usual)})"
+                            c < -0.15 -> "▼ ${Patterns.pct(c)} less than before (${Money.format(t.usual)})"
+                            else -> "About the same"
                         }
                         HBar(t.account.label, t.thisMonth, max, sub) { drill = t.account }
                     }
@@ -195,6 +222,12 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
             }
             item { Gap(40) }
         }
+    }
+    if (picking == 1) com.morphlabs.morph.ui.components.PickDateDialog(rangeStart, today, onDismiss = { picking = 0 }) { d ->
+        customFrom = d.toString(); picking = 2
+    }
+    if (picking == 2) com.morphlabs.morph.ui.components.PickDateDialog(rangeEnd.coerceAtLeast(rangeStart), today, onDismiss = { picking = 0 }) { d ->
+        customTo = d.toString(); preset = "custom"; picking = 0
     }
     drill?.let { a -> DrillDialog(p, s, a, today, { k, n -> drill = null; who(k, n) }, { drill = null; openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id))) }) { drill = null } }
     open?.let { e -> EntryDialog(repo, s, e) { open = null } }

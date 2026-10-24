@@ -162,6 +162,8 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 
 ## Patterns screen
 
+One period controls every section: 30d · 3m · 6m · Year · All, or **📅 Range** (pick a from and a to date). The chosen dates, number of days and total spent show under the chips. "This month vs your usual" became **"This period vs the one before"**: the same number of days just before the range.
+
 | Section | Question it answers |
 |---|---|
 | Spending by month | Am I spending more over time? |
