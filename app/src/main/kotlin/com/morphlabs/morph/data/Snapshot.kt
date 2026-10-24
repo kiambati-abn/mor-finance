@@ -82,7 +82,13 @@ class Snapshot(
             Observation(
                 key = e.counterpartyKey, tokens = Counterparty.tokens(e.counterparty), kind = e.kind,
                 outgoing = outgoing(e), amount = amount(e), hour = hour(e), accountId = e.categoryId!!,
-                timestamp = e.timestamp, weight = if (e.status == EntryStatus.CONFIRMED) 1.0 else 0.6,
+                timestamp = e.timestamp,
+                // Your choices count fully; Morph's own filings less, and its forced low-confidence guesses barely.
+                weight = when {
+                    e.status == EntryStatus.CONFIRMED -> 1.0
+                    (e.confidence ?: 1.0) < 0.55 -> 0.25
+                    else -> 0.6
+                },
                 minute = minute(e), weekend = weekend(e),
             )
         }

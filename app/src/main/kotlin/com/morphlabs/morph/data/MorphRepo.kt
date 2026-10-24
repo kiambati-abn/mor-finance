@@ -264,6 +264,32 @@ class MorphRepo private constructor(context: Context) {
         return n
     }
 
+    /**
+     * "Sort everything for me": files the whole waiting pile in rounds. First what Morph is very
+     * sure of, then (having learned from that) what it's fairly sure of, then everything else gets
+     * its best guess. Anything under 75% is flagged 🤔 to check; forced guesses barely teach Morph.
+     * Returns (filed, unsure).
+     */
+    @Synchronized
+    fun sortEverything(): Pair<Int, Int> {
+        var filed = 0
+        for (threshold in listOf(0.75, 0.6, 0.45, 0.0)) {
+            val s = snapshot()
+            if (s.pending.isEmpty()) break
+            var n = 0
+            for (p in s.pending) {
+                val g = s.guess(p, limit = 1, autopilot = threshold)
+                val auto = g.autoAccountId ?: g.suggestions.firstOrNull()?.accountId?.takeIf { threshold == 0.0 } ?: continue
+                // Forced picks keep their (low) confidence, so they're flagged and weigh little.
+                replaceLines(Posting.recategorize(p, auto, EntryStatus.AUTO).copy(confidence = minOf(g.confidence, if (threshold == 0.0) 0.5 else 1.0)))
+                n++
+            }
+            if (n > 0) changed()
+            filed += n
+        }
+        return filed to snapshot().unsure.size
+    }
+
     /** "Yes, Morph got it right": turns an auto-filed entry into a confirmed one. */
     fun confirm(entryId: Long): Game.Reward {
         val e = snapshot().entries.firstOrNull { it.id == entryId } ?: return Game.Reward(0, emptyList())

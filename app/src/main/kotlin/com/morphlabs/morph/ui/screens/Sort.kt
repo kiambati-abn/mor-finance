@@ -76,6 +76,7 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
     var last by remember { mutableStateOf<LastSort?>(null) }
     var cashOpen by remember { mutableStateOf<Pair<Entry, Long>?>(null) }
     val scope = rememberCoroutineScope()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
 
     // Skipped ones go to the end of the line instead of disappearing.
     val queue = s.pending.filter { it.id !in skipped } + s.pending.filter { it.id in skipped }.sortedBy { skipped.indexOf(it.id) }
@@ -130,6 +131,28 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
                         Text("Spread →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     }
                 }
+            }
+            if (backIndex == null && s.pending.size >= 10) {
+                var confirm by remember { mutableStateOf(false) }
+                TextButton(onClick = { confirm = true }) { Text("🪄 Sort everything for me (${s.pending.size})") }
+                if (confirm) androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirm = false },
+                    title = { Text("Sort all ${s.pending.size}?") },
+                    text = {
+                        Text("Morph files the sure ones first, learns from them, then the rest get its best guess. " +
+                            "Anything under 75% sure is flagged 🤔 for you to check later. You can change any of them.")
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirm = false
+                            scope.launch {
+                                val (n, unsure) = withContext(Dispatchers.IO) { repo.sortEverything() }
+                                android.widget.Toast.makeText(ctx, "Sorted $n · $unsure flagged 🤔 to check", android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        }) { Text("Sort them") }
+                    },
+                    dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancel") } },
+                )
             }
             if (current == null) AllDone(repo, s)
             else SwipeArea(

@@ -95,6 +95,8 @@ Every guess has a **confidence** (0–100%): the top choice's share of all the e
 
 When you turn Auto-sort on, it runs over everything already waiting.
 
+**Sort everything for me** (Sort tab, shown when 10+ are waiting) files the whole pile in rounds: first what Morph is 75%+ sure of, then 60%+ and 45%+ (learning between rounds), then everything left gets its best guess. Anything under 75% is flagged 🤔. Forced low-confidence guesses count only a quarter as much in learning, so a wrong guess can't spread; confirming or fixing one makes it count fully.
+
 Your choices always outweigh starter knowledge. Correcting an auto-filed item teaches Morph immediately, and other waiting items from the same counterparty are re-checked.
 
 ## The game
