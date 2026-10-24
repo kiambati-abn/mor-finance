@@ -41,6 +41,13 @@ Every amount opens the list of its transactions. The list shows its total, and e
 - **Accounts & budgets:** tap an account for its transactions (Edit is a button); budgets and envelopes have History / See transactions.
 - **Fees:** M-Pesa fees are split out automatically, and every transaction with a fee shows "fee 7 (auto)". Fees never need sorting.
 
+## Where it went (Home)
+
+- Two views: **Where** (bars by Category, Type or People & places) and **When** (bars per day; per week for 3 months).
+- Periods: 7 days, 30 days, this month, 3 months. Your choice is remembered.
+- Each row shows its share of spending; tapping any row or bar opens its transactions.
+- One colour on purpose: bars stay readable with any number of categories.
+
 ## Spending chart & reasons
 
 - **Home → Last 14 days:** one bar per day, today highlighted. Tap a bar to see that day and **why**, e.g. "🏠 Rent Ksh 5,000 (LANDLORD) · 🍔 Food Ksh 300". Unusually big days get a gold dot: 1.5× your usual day, and at least Ksh 500 more.

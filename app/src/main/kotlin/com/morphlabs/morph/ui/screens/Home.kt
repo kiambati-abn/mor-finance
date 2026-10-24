@@ -171,27 +171,9 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                 }
             }
         }
-        val top = d.topSpending(30)
-        if (top.isNotEmpty()) item {
-            SectionTitle("Where it went · 30 days", action = "Patterns", onAction = goPatterns)
-            MorphCard {
-                Column(Modifier.padding(16.dp)) {
-                    val max = top.first().second.coerceAtLeast(1)
-                    for ((a, v) in top) {
-                        Row(
-                            Modifier.clip(RoundedCornerShape(8.dp)).clickable { days("${a.label} · 30 days", 29, accounts = setOf(a.id)) },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(a.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            Text(Money.format(v), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                        }
-                        Box(
-                            Modifier.padding(top = 4.dp, bottom = 10.dp).fillMaxWidth(v.toFloat() / max).height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.primary)
-                        )
-                    }
-                }
-            }
+        item {
+            SectionTitle("Where it went", action = "Patterns", onAction = goPatterns)
+            MorphCard { Column(Modifier.padding(16.dp)) { com.morphlabs.morph.ui.components.SpendingExplorer(s, d.today) } }
         }
         if (repo.backupUri == null && s.entries.size > 20) item {
             Gap()
