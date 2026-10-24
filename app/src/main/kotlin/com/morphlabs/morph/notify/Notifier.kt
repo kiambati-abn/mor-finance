@@ -36,7 +36,7 @@ object Notifier {
     private const val GOLD = 0xFFE8A020.toInt()
 
     fun ensureChannels(context: Context) {
-        val nm = context.getSystemService(NotificationManager::class.java)
+        val nm = context.getSystemService(NotificationManager::class.java) ?: return
         nm.createNotificationChannel(NotificationChannel(CH_SORT, "What was it?", NotificationManager.IMPORTANCE_HIGH).apply {
             description = "Asks you to sort a new M-Pesa transaction with one tap"
         })
@@ -127,12 +127,12 @@ object Notifier {
     }
 
     fun cancel(context: Context, entryId: Long) {
-        context.getSystemService(NotificationManager::class.java).cancel(entryId.toInt())
+        context.getSystemService(NotificationManager::class.java)?.cancel(entryId.toInt())
     }
 
     private fun notify(context: Context, entryId: Long, n: Notification) {
         try {
-            context.getSystemService(NotificationManager::class.java).notify(entryId.toInt(), n)
+            context.getSystemService(NotificationManager::class.java)?.notify(entryId.toInt(), n)
         } catch (_: SecurityException) {
             // Notifications were turned off; the transaction still waits in the Sort tab.
         }

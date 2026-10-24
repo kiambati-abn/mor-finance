@@ -142,7 +142,7 @@ private fun Permissions(next: () -> Unit) {
 private fun Battery(next: () -> Unit) {
     val ctx = LocalContext.current
     val pm = ctx.getSystemService(PowerManager::class.java)
-    var ok by remember { mutableStateOf(pm.isIgnoringBatteryOptimizations(ctx.packageName)) }
+    var ok by remember { mutableStateOf(pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true) }
     Title(
         "Keep Morph awake",
         "Samsung and many other phones put apps to sleep, and sleeping apps miss SMS. " +
