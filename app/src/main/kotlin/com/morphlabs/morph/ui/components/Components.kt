@@ -198,3 +198,35 @@ fun LevelPill(level: com.morphlabs.morph.core.budget.Level, modifier: Modifier =
         color = levelColor(level), modifier = modifier,
     )
 }
+
+/**
+ * The two numbers a budget is about, side by side: what you've spent and what you're still
+ * allowed to spend, with the bar between them coloured by the traffic light.
+ * For savings/debts the words become "Saved"/"Repaid" and "To go".
+ */
+@Composable
+fun SpentLeft(spent: Long, left: Long, total: Long, level: com.morphlabs.morph.core.budget.Level, spentWord: String = "Spent", leftWord: String = "Left", period: String = "") {
+    val tint = levelColor(level)
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(spentWord + if (period.isNotEmpty()) " $period" else "", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Money.format(spent.coerceAtLeast(0)), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(if (left < 0) "Over by" else leftWord, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(Money.format(kotlin.math.abs(left)), fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium, color = if (level.warns) tint else MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        LinearProgressIndicator(
+            progress = { if (total > 0) (spent.toFloat() / total).coerceIn(0f, 1f) else 0f },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).height(8.dp).clip(RoundedCornerShape(4.dp)),
+            color = tint, trackColor = LocalMorph.current.track, drawStopIndicator = {},
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("of ${Money.format(total)}" + if (total > 0) " · ${(spent.coerceAtLeast(0) * 100 / total)}%" else "",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            LevelPill(level)
+        }
+    }
+}

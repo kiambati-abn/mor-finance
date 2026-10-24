@@ -33,6 +33,7 @@ import com.morphlabs.morph.core.model.BudgetPeriod
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.data.Snapshot
+import com.morphlabs.morph.ui.components.Gap
 import com.morphlabs.morph.ui.components.MorphCard
 import com.morphlabs.morph.ui.components.SectionTitle
 
@@ -139,37 +140,39 @@ private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, mont
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(a.label + if (a.archived) " (archived)" else "", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 val (big, small) = when {
-                    h != null -> (if (h.left < 0) "−" + Money.format(-h.left) else Money.format(h.left)) to (if (h.left < 0) "over" else if (a.period == BudgetPeriod.DAILY) "left today" else "left")
+                    // Anything with a budget shows its two numbers (spent | left) below instead.
+                    h != null || (envelope != null && envelope.target > 0) || (a.period != BudgetPeriod.NONE && a.budget > 0) -> "" to ""
                     envelope != null -> Money.format(envelope.left) to "in envelope"
                     budgetMode && a.group == AccountGroup.WALLET -> "••••" to "in envelopes"
                     a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE -> Money.format(monthNet) to "spent this month"
                     a.type == com.morphlabs.morph.core.model.AccountType.INCOME -> Money.format(-monthNet) to "in this month"
                     else -> Money.format(s.balance(a)) to (if (a.group == AccountGroup.DEBT) "owed" else "balance")
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(big, fontWeight = FontWeight.Bold, color = h?.let { com.morphlabs.morph.ui.components.levelColor(it.level) } ?: MaterialTheme.colorScheme.onSurface)
+                if (big.isNotEmpty()) Column(horizontalAlignment = Alignment.End) {
+                    Text(big, fontWeight = FontWeight.Bold)
                     Text(small, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 TextButton(onClick = onEdit) { Text("Edit") }
             }
             if (h != null && h.available > 0) {
-                val used = h.available - h.left
-                val pct = (used * 100 / h.available).coerceAtLeast(0)
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { (used.toFloat() / h.available).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(3.dp)),
-                    color = com.morphlabs.morph.ui.components.levelColor(h.level), trackColor = m.track, drawStopIndicator = {},
-                )
-                Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Spent ${Money.format(used.coerceAtLeast(0))} of ${Money.format(h.available)} · $pct%",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f),
-                    )
-                    com.morphlabs.morph.ui.components.LevelPill(h.level)
-                }
+                Gap(6)
+                com.morphlabs.morph.ui.components.SpentLeft(h.available - h.left, h.left, h.available, h.level,
+                    period = if (a.period == BudgetPeriod.DAILY) "today" else "this month")
+            } else if (envelope != null && envelope.target > 0) {
+                Gap(6)
+                val saving = a.type != com.morphlabs.morph.core.model.AccountType.EXPENSE
+                com.morphlabs.morph.ui.components.SpentLeft(envelope.used, envelope.left, maxOf(envelope.assigned, envelope.target),
+                    com.morphlabs.morph.core.budget.Level.OK,
+                    spentWord = if (a.group == AccountGroup.DEBT) "Repaid" else if (saving) "Saved" else "Spent", leftWord = if (saving) "In envelope" else "Left")
             } else if (a.period != BudgetPeriod.NONE && a.budget > 0) {
-                Text("${Money.format(a.budget)} ${if (a.period == BudgetPeriod.DAILY) "a day" else "a month"} target",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val expense = a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
+                val used = (if (a.type == com.morphlabs.morph.core.model.AccountType.INCOME) -monthNet else monthNet).coerceAtLeast(0)
+                Gap(6)
+                com.morphlabs.morph.ui.components.SpentLeft(used, a.budget - used, a.budget,
+                    if (expense) com.morphlabs.morph.core.budget.Health.level(a.budget - used, a.budget) else com.morphlabs.morph.core.budget.Level.OK,
+                    spentWord = when { expense -> "Spent"; a.group == AccountGroup.DEBT -> "Repaid"; a.group == AccountGroup.INCOME -> "Received"; else -> "Saved" },
+                    leftWord = if (expense) "Left" else "To go",
+                    period = "this month")
             }
         }
     }

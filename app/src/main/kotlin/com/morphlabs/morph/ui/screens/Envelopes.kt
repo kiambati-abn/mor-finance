@@ -119,25 +119,21 @@ private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?, 
     val m = LocalMorph.current
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onEdit) {
         Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(e.account.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                Text("${Money.format(e.used, withCurrency = false)} / ${Money.format(e.available, withCurrency = false)}", style = MaterialTheme.typography.bodyMedium)
-            }
-            if (e.isLimit) com.morphlabs.morph.ui.components.LevelPill(com.morphlabs.morph.core.budget.Health.level(e.left, e.available))
+            Text(e.account.label, fontWeight = FontWeight.SemiBold)
             if (e.isLimit) AffordLine(e.left, afford)
-            Gap(8)
-            EnvelopeBar(e)
             Gap(6)
+            // Spent | Left, the same two numbers everywhere a budget shows.
+            com.morphlabs.morph.ui.components.SpentLeft(
+                e.used, e.left, e.available,
+                if (e.isLimit) com.morphlabs.morph.core.budget.Health.level(e.left, e.available) else com.morphlabs.morph.core.budget.Level.OK,
+                spentWord = when (e.account.type) { AccountType.EXPENSE -> "Spent"; AccountType.LIABILITY -> "Repaid"; AccountType.INCOME -> "Received"; else -> "Saved" },
+                leftWord = if (e.isLimit) "Left" else "To go",
+                period = if (e.period == com.morphlabs.morph.core.model.BudgetPeriod.DAILY) "today" else "this month",
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                val verb = when (e.account.type) {
-                    AccountType.EXPENSE -> if (e.over) "Over by ${Money.format(-e.left)}" else "${Money.format(e.left)} left"
-                    AccountType.LIABILITY -> if (e.reached) "Repayment target met 🎉" else "${Money.format(e.left)} to repay"
-                    AccountType.INCOME -> if (e.reached) "Target reached 🎉" else "${Money.format(e.left)} still expected"
-                    else -> if (e.reached) "Saved! 🎉" else "${Money.format(e.left)} to save"
-                }
                 Text(
-                    verb, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
-                    color = when { e.over -> m.bad; e.reached -> m.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
+                    if (e.reached) "Target reached 🎉" else "", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f),
+                    color = m.good,
                 )
                 if (e.moved != 0L) Text("moved ${if (e.moved > 0) "+" else ""}${Money.format(e.moved, withCurrency = false)}  ", style = MaterialTheme.typography.bodySmall)
                 val openList = com.morphlabs.morph.ui.LocalOpenList.current

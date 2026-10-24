@@ -67,6 +67,20 @@ Every amount opens the list of its transactions. The list shows its total, and e
 - Shown on budget/envelope cards, Accounts, Sort buttons ("⚠️ Ksh 100 left") and a Home card ("2 budgets running low", which opens Budgets filtered to Running low).
 - **Alerts:** a notification once when a budget reaches 🔴 Almost out and once if it goes ⛔ Over, per day or month. Switch off under Me → Budget alerts.
 
+## Spent | Left on every budget
+
+Every account with a budget, in Accounts, Budgets and Envelopes and in both Budget view and real view, shows the same block:
+
+```
+Spent this month        Left
+Ksh 1,300            Ksh 700
+▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░
+of Ksh 2,000 · 65%      🟡 Getting low
+```
+
+- Daily budgets say "today". Savings and debts say Saved / Repaid and To go (or In envelope).
+- When you've spent more than the budget, "Left" becomes "Over by".
+
 ## Accounts, one tap away
 
 - Home has **🔍 Find an account…**, which opens Accounts. Search by name, or filter: Spending · Savings · Debts · Wallets · Income · With budget.

@@ -126,43 +126,25 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
 
 @Composable
 private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = null, onClick: () -> Unit) {
-    val m = LocalMorph.current
     val daily = e.account.period == BudgetPeriod.DAILY
     val level = if (e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE) {
         if (daily) com.morphlabs.morph.core.budget.Health.level(minOf(e.todayLeft ?: e.left, e.left), e.account.budget)
         else com.morphlabs.morph.core.budget.Health.level(e.left, maxOf(e.assigned, e.target))
     } else com.morphlabs.morph.core.budget.Level.OK
-    val tint = com.morphlabs.morph.ui.components.levelColor(level)
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onClick) {
         Column(Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(e.account.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        Money.format(if (daily) minOf(e.todayLeft ?: e.left, e.left) else e.left),
-                        fontWeight = FontWeight.Black, fontSize = 18.sp,
-                        color = if (level.warns) tint else MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(if (daily) "left today" else "left", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            com.morphlabs.morph.ui.components.LevelPill(level)
+            Text(e.account.label, fontWeight = FontWeight.SemiBold)
             afford?.let { (left, amt) -> AffordLine(left, amt) }
             Gap(6)
-            LinearProgressIndicator(
-                progress = { e.progressLeft },
-                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = tint,
-                trackColor = m.track, drawStopIndicator = {},
-            )
-            Gap(4)
-            Text(
-                buildString {
-                    append("${Money.format(e.left)} in envelope")
-                    if (e.target > 0) append(" · fills to ${Money.format(e.target)}")
-                    if (e.used > 0) append(" · used ${Money.format(e.used)}")
-                },
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            val spending = e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
+            if (daily && e.todayLeft != null) {
+                val todayLeft = minOf(e.todayLeft!!, e.left)
+                com.morphlabs.morph.ui.components.SpentLeft(e.account.budget - todayLeft, todayLeft, e.account.budget, level, period = "today")
+                Text("${Money.format(e.left)} in envelope for the rest of the month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else com.morphlabs.morph.ui.components.SpentLeft(
+                e.used, e.left, maxOf(e.assigned, e.target), level,
+                spentWord = if (spending) "Spent" else if (e.account.group == com.morphlabs.morph.core.model.AccountGroup.DEBT) "Repaid" else "Saved",
+                leftWord = if (spending) "Left" else "In envelope",
             )
         }
     }
