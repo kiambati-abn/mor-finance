@@ -74,11 +74,11 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                 Column(Modifier.padding(16.dp)) {
                     Text("⚠️ M-Pesa doesn't match", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Your latest SMS says ${Money.format(s.lastSms?.smsBalance ?: 0)}, Morph has ${Money.format((s.lastSms?.smsBalance ?: 0) - s.mpesaGap)} at that time. " +
-                            "A message was probably deleted or missed.",
+                        "Off by ${Money.format(kotlin.math.abs(s.mpesaGap))}. Usually a message that hasn't arrived yet, or one that was deleted. " +
+                            "Morph fixes this on its own after 30 minutes; tap to do it now.",
                         style = MaterialTheme.typography.bodySmall,
                     )
-                    TextButton(onClick = { Thread { repo.fixMpesaGap() }.start() }) { Text("Add the difference to sort") }
+                    TextButton(onClick = { Thread { repo.fixMpesaGap() }.start() }) { Text("Match M-Pesa now") }
                 }
             }
         }

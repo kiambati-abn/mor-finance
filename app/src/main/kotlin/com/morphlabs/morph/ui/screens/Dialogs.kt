@@ -122,7 +122,7 @@ fun AddEntryDialog(repo: MorphRepo, s: Snapshot, onDismiss: () -> Unit) {
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Spent", "Received", "Moved").forEachIndexed { i, l ->
+                    listOf("Spent", "Received", "Transfer").forEachIndexed { i, l ->
                         FilterChip(selected = kind == i, onClick = {
                             kind = i
                             when (i) { 0 -> { from = cash; to = null }; 1 -> { from = null; to = cash }; else -> { from = cash; to = null } }
@@ -160,11 +160,23 @@ fun AddEntryDialog(repo: MorphRepo, s: Snapshot, onDismiss: () -> Unit) {
 
     when (picking) {
         "from" -> AccountPickerDialog(
-            "From", s.accounts.filter { if (kind == 1) it.type == AccountType.INCOME || it.type == AccountType.LIABILITY || it.group == AccountGroup.OWED_TO_ME else it.type == AccountType.ASSET || it.type == AccountType.LIABILITY },
+            "From", s.accounts.filter {
+                when (kind) {
+                    0 -> it.type == AccountType.ASSET || it.type == AccountType.LIABILITY
+                    1 -> it.type == AccountType.INCOME || it.type == AccountType.LIABILITY || it.group == AccountGroup.OWED_TO_ME
+                    else -> true // a transfer can come from anywhere
+                }
+            },
             null, onDismiss = { picking = null },
         ) { from = it; picking = null }
         "to" -> AccountPickerDialog(
-            "To", s.accounts.filter { if (kind == 0) it.type == AccountType.EXPENSE else it.type != AccountType.EXPENSE && it.type != AccountType.INCOME },
+            "To", s.accounts.filter {
+                when (kind) {
+                    0 -> it.type == AccountType.EXPENSE
+                    1 -> it.type == AccountType.ASSET
+                    else -> true
+                }
+            },
             null, onDismiss = { picking = null },
         ) { to = it; picking = null }
     }

@@ -10,6 +10,7 @@ import com.morphlabs.morph.core.defaults.DefaultAccounts
 import com.morphlabs.morph.core.game.Game
 import com.morphlabs.morph.core.learn.Guess
 import com.morphlabs.morph.core.ledger.Posting
+import com.morphlabs.morph.core.ledger.Reconcile
 import com.morphlabs.morph.core.model.Account
 import com.morphlabs.morph.core.model.AccountGroup
 import com.morphlabs.morph.core.model.BudgetPeriod
@@ -105,18 +106,6 @@ class MorphRepo private constructor(context: Context) {
         var s = snapshot()
         val mpesa = s.role(SystemRole.MPESA)
 
-        // Very first M-Pesa message: work out the starting balance so Morph matches M-Pesa exactly.
-        val hasOpening = s.entries.any { it.source == EntrySource.SYSTEM && it.categoryId == mpesa }
-        if (!hasOpening && s.lastSms == null && sms.balance != null) {
-            val effect = when {
-                sms.kind == TxKind.FULIZA_DRAW -> sms.amount
-                sms.outgoing || sms.kind == TxKind.UNKNOWN -> -(sms.amount + sms.fee)
-                else -> sms.amount - sms.fee
-            }
-            val opening = Posting.opening(ts - 1, mpesa, true, sms.balance!! - effect, s::role)
-            s = s.with(insert(opening, null))
-        }
-
         // Unknown wording: the balance change tells us which way the money went and how much.
         var outgoing = sms.outgoing
         if (sms.kind == TxKind.UNKNOWN) {
@@ -145,11 +134,63 @@ class MorphRepo private constructor(context: Context) {
         val entry = Posting.fromSms(sms, ts, s::role, categoryId, status, outgoing)
             .let { if (it.status == EntryStatus.AUTO) it.copy(confidence = guess?.confidence) else it }
         val saved = insert(entry, dedupe)
-        if (batch) snap = s.with(saved) else changed()
+        if (batch) snap = s.with(saved) else { changed(); reconcileMpesa() }
         return IngestResult(saved, guess)
     }
 
-    fun finishBatch() = changed()
+    fun finishBatch() {
+        changed()
+        reconcileMpesa()
+    }
+
+    /**
+     * Makes Morph's M-Pesa balance match M-Pesa's own: re-works the starting balance from the
+     * earliest SMS, and turns every unexplained jump between two SMS into an item to sort
+     * ("M-Pesa money out, no SMS found"). Gaps from the last 30 minutes wait, unless [force],
+     * because the message that explains them may still be on its way. Returns the number of gaps.
+     */
+    @Synchronized
+    fun reconcileMpesa(force: Boolean = false): Int {
+        val s = snapshot()
+        val mpesa = s.role(SystemRole.MPESA)
+        val unc = s.role(SystemRole.UNCATEGORIZED)
+        val latest = s.lastSms?.timestamp ?: return 0
+        val pendingGaps = db.rawQuery("SELECT id FROM entries WHERE dedupe LIKE 'gap:%' AND status = ?", arrayOf(EntryStatus.NEEDS_REVIEW.name)).use { c ->
+            buildSet { while (c.moveToNext()) add(c.getLong(0)) }
+        }
+        val openings = s.entries.filter { it.source == EntrySource.SYSTEM && it.categoryId == mpesa }
+        val base = s.entries.filter { it.id !in pendingGaps && it !in openings }
+        val r = Reconcile.mpesa(base, mpesa, if (force) Long.MAX_VALUE else latest - 30 * 60 * 1000) ?: return 0
+        val unchanged = openings.size == 1 && openings[0].lines.first { it.accountId == mpesa }.amount == r.opening &&
+            pendingGaps.isEmpty() && r.gaps.isEmpty()
+        if (unchanged) return 0
+        db.beginTransaction()
+        try {
+            for (id in pendingGaps + openings.map { it.id }) {
+                db.delete("lines", "entry_id = ?", arrayOf(id.toString()))
+                db.delete("entries", "id = ?", arrayOf(id.toString()))
+            }
+            insert(Posting.opening(r.openingTimestamp, mpesa, true, r.opening, s::role), null)
+            r.gaps.forEachIndexed { i, g ->
+                insert(
+                    Entry(
+                        timestamp = g.timestamp,
+                        description = if (g.amount > 0) "M-Pesa money in (no SMS found)" else "M-Pesa money out (no SMS found)",
+                        lines = listOf(Line(mpesa, g.amount), Line(unc, -g.amount)),
+                        status = EntryStatus.NEEDS_REVIEW, source = EntrySource.MANUAL, kind = TxKind.UNKNOWN,
+                        categoryId = unc,
+                        note = "Your M-Pesa balance jumped here without an SMS Morph could read. Sort it if you remember what it was.",
+                    ),
+                    "gap:${g.atEntryId}:${System.nanoTime()}:$i",
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        changed()
+        return r.gaps.size
+    }
 
     // ---- sorting --------------------------------------------------------------------------
 
@@ -423,26 +464,11 @@ class MorphRepo private constructor(context: Context) {
         changed()
     }
 
-    /** Adds a to-be-sorted entry for M-Pesa money Morph never saw an SMS for, so balances match again. */
+    /** "Match M-Pesa now": reconcile including the last 30 minutes. */
     fun fixMpesaGap() {
-        val s = snapshot()
-        val gap = s.mpesaGap
-        if (gap == 0L) return
-        val mpesa = s.role(SystemRole.MPESA)
-        val unc = s.role(SystemRole.UNCATEGORIZED)
-        val ts = s.lastSms?.timestamp ?: System.currentTimeMillis()
-        val entry = Entry(
-            timestamp = ts - 1,
-            description = if (gap > 0) "M-Pesa money in (no SMS found)" else "M-Pesa spending (no SMS found)",
-            lines = listOf(Line(mpesa, gap), Line(unc, -gap)),
-            status = EntryStatus.NEEDS_REVIEW,
-            source = EntrySource.MANUAL,
-            kind = TxKind.UNKNOWN,
-            categoryId = unc,
-        )
-        insert(entry, null)
-        changed()
+        reconcileMpesa(force = true)
     }
+
 
     fun stars(): Int = snapshot().stars
 

@@ -7,6 +7,7 @@ import com.morphlabs.morph.core.learn.Observation
 import com.morphlabs.morph.core.learn.Query
 import com.morphlabs.morph.core.ledger.Balances
 import com.morphlabs.morph.core.ledger.Posting
+import com.morphlabs.morph.core.ledger.Reconcile
 import com.morphlabs.morph.core.model.Account
 import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.model.EntrySource
@@ -99,10 +100,8 @@ class Snapshot(
      * at that moment. Non-zero means an SMS was missed or deleted.
      */
     val mpesaGap: Long by lazy {
-        val last = lastSms ?: return@lazy 0L
-        val mpesa = role(SystemRole.MPESA)
-        val ledger = entries.filter { it.timestamp <= last.timestamp }.sumOf { e -> e.lines.filter { it.accountId == mpesa }.sumOf { it.amount } }
-        last.smsBalance!! - ledger
+        val r = Reconcile.mpesa(entries, role(SystemRole.MPESA)) ?: return@lazy 0L
+        r.opening + r.gaps.sumOf { it.amount }
     }
 
     fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, stars, bonusDays, zone)
