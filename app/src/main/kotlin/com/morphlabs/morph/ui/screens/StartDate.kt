@@ -46,6 +46,7 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
     var pulled by remember { mutableStateOf<Int?>(null) }
+    var picking by remember { mutableStateOf(false) }
     fun ms(d: LocalDate) = d.atStartOfDay(repo.zone).toInstant().toEpochMilli()
 
     AlertDialog(
@@ -62,6 +63,7 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
                     for ((d, l) in listOf(today to "Today", today.withDayOfMonth(1) to "This month", today.minusMonths(1).withDayOfMonth(1) to "Last month")) {
                         FilterChip(selected = current == d, onClick = { repo.startDate = ms(d) }, label = { Text(l) })
                     }
+                    FilterChip(selected = false, onClick = { picking = true }, label = { Text("📅 Pick a date") })
                 }
                 if (current != null) {
                     Gap()
@@ -97,4 +99,14 @@ fun StartDateDialog(repo: MorphRepo, today: LocalDate, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Done") } },
     )
+    // Picking a later date just hides older items; picking an earlier one pulls that history in.
+    if (picking) com.morphlabs.morph.ui.components.PickDateDialog(current ?: today, today, onDismiss = { picking = false }) { d ->
+        if (current != null && d.isBefore(current)) {
+            busy = true
+            scope.launch {
+                val r = withContext(Dispatchers.IO) { InboxImporter.pullEarlier(ctx, ms(d)) { progress = it } }
+                busy = false; pulled = r.added
+            }
+        } else repo.startDate = ms(d)
+    }
 }

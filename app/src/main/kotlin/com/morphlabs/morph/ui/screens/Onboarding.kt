@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -194,16 +195,36 @@ private fun Battery(next: () -> Unit) {
 private fun History(repo: MorphRepo, next: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var months by rememberSaveable { mutableIntStateOf(3) }
+    val today = remember { repo.dayOf(System.currentTimeMillis()) }
+    // The start date: nothing before it is imported or asked about. Null = everything.
+    var start by rememberSaveable { mutableStateOf<String?>(today.minusMonths(3).toString()) }
+    var picking by remember { mutableStateOf(false) }
+    val startDay = start?.let { java.time.LocalDate.parse(it) }
     var running by remember { mutableStateOf(false) }
     var progress by remember { mutableIntStateOf(0) }
     var result by remember { mutableStateOf<InboxImporter.Result?>(null) }
-    Title("Bring in your history", "Morph can read the M-Pesa messages already on your phone. How far back?")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for ((m, label) in listOf(1 to "1 month", 3 to "3 months", 6 to "6 months", 0 to "All")) {
-            FilterChip(selected = months == m, onClick = { months = m }, label = { Text(label) }, enabled = !running && result == null)
+    Title("Bring in your history", "Morph reads the M-Pesa messages already on your phone, from your start date onwards.")
+    val enabled = !running && result == null
+    MorphCard(onClick = if (enabled) ({ picking = true }) else null) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("📅 Start date", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(startDay?.let { java.time.format.DateTimeFormatter.ofPattern("EEE d MMM yyyy", java.util.Locale.ENGLISH).format(it) } ?: "Everything on the phone",
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            if (enabled) Text("Change", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
         }
     }
+    Gap(8)
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((d, label) in listOf(today to "Today", today.withDayOfMonth(1) to "This month", today.minusMonths(1) to "1 month",
+            today.minusMonths(3) to "3 months", today.minusMonths(6) to "6 months", null to "All")) {
+            FilterChip(selected = startDay == d, onClick = { start = d?.toString() }, label = { Text(label) }, enabled = enabled)
+        }
+    }
+    Text("Nothing before this date is imported or asked about. You can pull in earlier history any time from Me.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    if (picking) com.morphlabs.morph.ui.components.PickDateDialog(startDay ?: today.minusMonths(3), today, onDismiss = { picking = false }) { start = it.toString() }
     Gap(24)
     val r = result
     when {
@@ -227,11 +248,10 @@ private fun History(repo: MorphRepo, next: () -> Unit) {
             Button(onClick = {
                 running = true
                 scope.launch {
-                    val since = if (months == 0) 0L else repo.dayOf(System.currentTimeMillis()).minusMonths(months.toLong())
-                        .atStartOfDay(repo.zone).toInstant().toEpochMilli()
+                    val since = startDay?.atStartOfDay(repo.zone)?.toInstant()?.toEpochMilli() ?: 0L
                     result = withContext(Dispatchers.IO) {
                         // Tracking starts here; earlier history can be pulled in later from Me.
-                        repo.startDate = if (months == 0) null else since
+                        repo.startDate = if (startDay == null) null else since
                         InboxImporter.import(ctx, since, onProgress = { progress = it })
                     }
                     running = false

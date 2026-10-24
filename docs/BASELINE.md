@@ -148,7 +148,8 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 
 ## Tracking start date
 
-- Set during setup (the history window you chose, or today if you skipped), and changeable under Me → 📅 Tracking starts.
+- Set during setup on the "Bring in your history" step: a 📅 Start date card (tap to pick any day on a calendar) plus quick choices: Today · This month · 1 / 3 / 6 months · All. Skipping starts today.
+- Changeable under Me → 📅 Tracking starts (quick choices or 📅 Pick a date). Picking an earlier date pulls that history in.
 - M-Pesa SMS from before the start date are not imported. Waiting items from before it are hidden from Sort (kept, not deleted).
 - **Pull earlier history:** 1 month, 3 months, 6 months, 1 year or everything before the start date. Morph imports that period, moves the start date back, and offers 🪄 Sort them for me.
 - M-Pesa balances stay correct either way: reconciliation re-anchors to the earliest imported SMS.
