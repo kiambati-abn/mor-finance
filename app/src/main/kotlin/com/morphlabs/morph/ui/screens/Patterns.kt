@@ -59,6 +59,9 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
     val regulars = remember(p) { p.regulars(today) }
     val unusual = remember(p, days) { p.unusual(today, days) }
     val after = remember(p, days) { p.afterIncome(today, days) }
+    val openList = com.morphlabs.morph.ui.LocalOpenList.current
+    val from = today.minusDays(days - 1L).atStartOfDay(s.zone).toInstant().toEpochMilli()
+    fun who(key: String, name: String, since: Long? = null) = openList(com.morphlabs.morph.ui.TxFilter(name, counterpartyKey = key, from = since))
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         BackHeader("Patterns", onBack)
@@ -83,6 +86,11 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                 MorphCard { Column(Modifier.padding(16.dp)) {
                     BarChart(monthly.map { it.label to it.total }) { i ->
                         val month = java.time.YearMonth.from(today).minusMonths((monthly.lastIndex - i).toLong())
+                        TextButton(onClick = {
+                            openList(com.morphlabs.morph.ui.TxFilter("Spending · ${monthly[i].label}", spendingOnly = true,
+                                from = month.atDay(1).atStartOfDay(s.zone).toInstant().toEpochMilli(),
+                                to = month.plusMonths(1).atDay(1).atStartOfDay(s.zone).toInstant().toEpochMilli()))
+                        }) { Text("See ${monthly[i].label} transactions →") }
                         val why = remember(p, i) { p.whyMonth(month, today) }
                         if (why.isNotEmpty()) Text(
                             "vs your usual: " + why.joinToString(" · ") { dr ->
@@ -141,7 +149,7 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                     for (r in regulars.take(8)) {
                         val every = when (r.everyDays) { 1 -> "every day"; in 6..8 -> "every week"; in 13..16 -> "every 2 weeks"; in 27..32 -> "every month"; else -> "every ${r.everyDays} days" }
                         HBar("${r.accountId?.let { s.byId[it]?.emoji } ?: "🔁"} ${r.name}", r.monthlyCost, max,
-                            "~${Money.format(r.average)} $every · next ~${dayFmt.format(r.next)}")
+                            "~${Money.format(r.average)} $every · next ~${dayFmt.format(r.next)}") { who(r.key, r.name) }
                     }
                 } }
             }
@@ -152,7 +160,7 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                     for (pl in places) HBar(
                         "${pl.accountId?.let { s.byId[it]?.emoji } ?: "❔"} ${pl.name}", pl.total, max,
                         "${pl.count} payment${if (pl.count == 1) "" else "s"} · average ${Money.format(pl.total / pl.count)}",
-                    )
+                    ) { who(pl.key, pl.name, from) }
                 } }
             }
             if (unusual.isNotEmpty()) item {
@@ -183,12 +191,12 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
             item { Gap(40) }
         }
     }
-    drill?.let { a -> DrillDialog(p, s, a, today) { drill = null } }
+    drill?.let { a -> DrillDialog(p, s, a, today, { k, n -> drill = null; who(k, n) }, { drill = null; openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id))) }) { drill = null } }
     open?.let { e -> EntryDialog(repo, s, e) { open = null } }
 }
 
 @Composable
-private fun DrillDialog(p: Patterns, s: Snapshot, a: Account, today: java.time.LocalDate, onDismiss: () -> Unit) {
+private fun DrillDialog(p: Patterns, s: Snapshot, a: Account, today: java.time.LocalDate, onPlace: (String, String) -> Unit, onAll: () -> Unit, onDismiss: () -> Unit) {
     val months = remember(p, a) { p.monthly(today, 6, a.id) }
     val places = remember(p, a) { p.topPlaces(today, 180, 6, a.id) }
     AlertDialog(
@@ -201,10 +209,11 @@ private fun DrillDialog(p: Patterns, s: Snapshot, a: Account, today: java.time.L
                     Gap(12)
                     Text("Where it goes (6 months)", style = MaterialTheme.typography.labelLarge)
                     val max = places.first().total
-                    for (pl in places) HBar(pl.name, pl.total, max, "${pl.count}× · average ${Money.format(pl.total / pl.count)}")
+                    for (pl in places) HBar(pl.name, pl.total, max, "${pl.count}× · average ${Money.format(pl.total / pl.count)}") { onPlace(pl.key, pl.name) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TextButton(onClick = onAll) { Text("All transactions") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Close") } },
     )
 }

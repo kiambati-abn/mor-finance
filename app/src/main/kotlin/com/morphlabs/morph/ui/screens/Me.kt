@@ -55,6 +55,10 @@ import kotlinx.coroutines.withContext
 fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit) {
     val s = d.s
     val ctx = LocalContext.current
+    val openList = com.morphlabs.morph.ui.LocalOpenList.current
+    val monthStart = d.today.withDayOfMonth(1).atStartOfDay(s.zone).toInstant().toEpochMilli()
+    fun account(a: Account) = openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id)))
+    fun groupThisMonth(title: String, ids: Set<Long>) = openList(com.morphlabs.morph.ui.TxFilter(title, accountIds = ids, from = monthStart))
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<Account?>(null) }
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -116,7 +120,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                     Text(Money.format(d.netWorth.net), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                     Text("${Money.format(d.netWorth.assets)} you have − ${Money.format(d.netWorth.liabilities)} you owe", style = MaterialTheme.typography.bodySmall)
                     Gap(8)
-                    for ((a, v) in assets) BalanceRow(a, v) { editing = a }
+                    for ((a, v) in assets) BalanceRow(a, v) { account(a) }
                 }
             }
         }
@@ -125,8 +129,8 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             MorphCard {
                 Column(Modifier.padding(16.dp)) {
                     if (debts.all { it.second == 0L }) Text("No debts recorded. 🎉", style = MaterialTheme.typography.bodyMedium)
-                    for ((a, v) in debts) BalanceRow(a, v) { editing = a }
-                    Text("Tap a debt to set what you owe or a monthly repayment target.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    for ((a, v) in debts) BalanceRow(a, v) { account(a) }
+                    Text("Tap a debt to see its payments; Edit account sets what you owe or a monthly repayment target.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -219,7 +223,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             }
         }
         if (d.insights.isNotEmpty()) item { SectionTitle("What your money says", action = "Patterns", onAction = goPatterns) }
-        items(d.insights, key = { it.id }) { i -> InsightCard(i); Gap(8) }
+        items(d.insights, key = { it.id }) { i -> InsightCard(i, s); Gap(8) }
         item {
             val month = d.monthByAccount()
             val fixed = month.filterKeys { s.byId[it]?.group == AccountGroup.FIXED }.values.sum()
@@ -227,9 +231,16 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             SectionTitle("This month")
             MorphCard {
                 Column(Modifier.padding(16.dp)) {
-                    Row { Text("Fixed (needs)", Modifier.weight(1f)); Text(Money.format(fixed), fontWeight = FontWeight.SemiBold) }
-                    Row { Text("Discretionary (wants)", Modifier.weight(1f)); Text(Money.format(wants), fontWeight = FontWeight.SemiBold) }
-                    Row { Text("Money in", Modifier.weight(1f)); Text(Money.format(d.receivedThisMonth), fontWeight = FontWeight.SemiBold) }
+                    val ids = { g: AccountGroup -> s.accounts.filter { it.group == g }.map { it.id }.toSet() }
+                    Row(Modifier.fillMaxWidth().clickable { groupThisMonth("Fixed · this month", ids(AccountGroup.FIXED)) }.padding(vertical = 6.dp)) {
+                        Text("Fixed (needs) ›", Modifier.weight(1f)); Text(Money.format(fixed), fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { groupThisMonth("Discretionary · this month", ids(AccountGroup.DISCRETIONARY)) }.padding(vertical = 6.dp)) {
+                        Text("Discretionary (wants) ›", Modifier.weight(1f)); Text(Money.format(wants), fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(Modifier.fillMaxWidth().clickable { groupThisMonth("Money in · this month", ids(AccountGroup.INCOME)) }.padding(vertical = 6.dp)) {
+                        Text("Money in ›", Modifier.weight(1f)); Text(Money.format(d.receivedThisMonth), fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }

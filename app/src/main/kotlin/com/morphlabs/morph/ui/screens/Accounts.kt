@@ -45,6 +45,7 @@ fun BackHeader(title: String, onBack: () -> Unit, action: (@Composable () -> Uni
 @Composable
 fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
     var editing by remember { mutableStateOf<Account?>(null) }
+    val openList = com.morphlabs.morph.ui.LocalOpenList.current
     var creating by remember { mutableStateOf(false) }
     var showArchived by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -56,7 +57,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
             for ((label, list) in sections) {
                 item(key = "h$label") { SectionTitle(label) }
                 items(list, key = { it.id }) { a ->
-                    MorphCard(Modifier.padding(bottom = 6.dp), onClick = { editing = a }) {
+                    MorphCard(Modifier.padding(bottom = 6.dp), onClick = { openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id))) }) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(a.label + if (a.archived) " (archived)" else "", fontWeight = FontWeight.SemiBold)
@@ -69,6 +70,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
                                 if (s.budgetView && a.group == AccountGroup.WALLET) "••••" else Money.format(s.balance(a)),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
+                            TextButton(onClick = { editing = a }) { Text("Edit") }
                         }
                     }
                 }

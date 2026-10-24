@@ -68,9 +68,10 @@ fun MorphCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, cont
 }
 
 @Composable
-fun StatTile(label: String, value: Long, modifier: Modifier = Modifier) {
+fun StatTile(label: String, value: Long, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Column(
-        modifier.clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow).padding(12.dp)
+        modifier.clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it }.padding(12.dp)
     ) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(Money.compact(value), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -105,6 +106,7 @@ fun EntryRow(e: Entry, s: Snapshot, onClick: () -> Unit) {
     val a = e.categoryId?.let { s.byId[it] }
     val out = s.outgoing(e)
     val split = s.categories(e).size > 1
+    val fee = e.lines.filter { it.amount > 0 && it.accountId in s.structural && s.byId[it.accountId]?.role != com.morphlabs.morph.core.model.SystemRole.MPESA }.sumOf { it.amount }
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -118,7 +120,8 @@ fun EntryRow(e: Entry, s: Snapshot, onClick: () -> Unit) {
             Text(e.description, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
             Text(
                 (if (e.status == EntryStatus.NEEDS_REVIEW) "To sort · " else if (split) "Split · " else (a?.name?.plus(" · ") ?: "")) +
-                    (e.note?.let { "“$it” · " } ?: "") + whenText(e.timestamp, s.zone),
+                    (e.note?.let { "“$it” · " } ?: "") + whenText(e.timestamp, s.zone) +
+                    (if (fee > 0) " · fee ${Money.format(fee, withCurrency = false)} (auto)" else ""),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )

@@ -31,6 +31,16 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 - *Move budget* shifts the plan between envelopes for the current day or month. Real money doesn't move. (This replaces the yellow "transfer" rows from the Notion journal.)
 - *Safe to spend today* = what's left in today's daily envelopes + what's left in each monthly envelope ÷ the days left in the month.
 
+## Tap anything to see what's behind it
+
+Every amount opens the list of its transactions. The list shows its total, and each transaction opens to change its category, split it, add a note or delete it.
+
+- **Home:** "Spent today", the Today / Yesterday / 7 / 30 days tiles, the averages, each day of the chart ("See that day's transactions"), every "Where it went" row, and insights about specific spending (fees, repeated small payments, an over-budget category).
+- **Patterns:** each month, regular payments, top people and places, and inside a category's drill-down, its places and "All transactions".
+- **Me:** every wallet, savings and debt balance; Fixed, Discretionary and Money in this month.
+- **Accounts & budgets:** tap an account for its transactions (Edit is a button); budgets and envelopes have History / See transactions.
+- **Fees:** M-Pesa fees are split out automatically, and every transaction with a fee shows "fee 7 (auto)". Fees never need sorting.
+
 ## Spending chart & reasons
 
 - **Home → Last 14 days:** one bar per day, today highlighted. Tap a bar to see that day and **why**, e.g. "🏠 Rent Ksh 5,000 (LANDLORD) · 🍔 Food Ksh 300". Unusually big days get a gold dot: 1.5× your usual day, and at least Ksh 500 more.

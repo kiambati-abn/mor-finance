@@ -28,18 +28,21 @@ import com.morphlabs.morph.core.model.EntryStatus
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.data.Snapshot
+import com.morphlabs.morph.ui.TxFilter
 import com.morphlabs.morph.ui.components.EntryRow
 
 @Composable
-fun TransactionsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
+fun TransactionsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, filter: TxFilter? = null) {
+    var editAccount by remember { mutableStateOf(false) }
+    val single = filter?.accountIds?.singleOrNull()?.let { s.byId[it] }
     var q by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf("all") }
+    var chip by remember { mutableStateOf("all") }
     var open by remember { mutableStateOf<Entry?>(null) }
-    val list = remember(s, q, filter) {
+    val list = remember(s, q, filter, chip) {
         val needle = q.trim().lowercase()
         val monthStart = repo.dayOf(System.currentTimeMillis()).withDayOfMonth(1).atStartOfDay(s.zone).toInstant().toEpochMilli()
-        s.newestFirst.filter { e ->
-            when (filter) {
+        s.newestFirst.filter { e -> filter == null || filter.matches(e, s) }.filter { e ->
+            when (chip) {
                 "sort" -> e.status == EntryStatus.NEEDS_REVIEW
                 "auto" -> e.status == EntryStatus.AUTO
                 "month" -> e.timestamp >= monthStart
@@ -55,12 +58,19 @@ fun TransactionsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
         }
     }
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        BackHeader("All transactions", onBack)
+        BackHeader(filter?.title ?: "All transactions", onBack) {
+            if (single != null) androidx.compose.material3.TextButton(onClick = { editAccount = true }) { Text("Edit account") }
+        }
+        if (filter != null) Text(
+            "Total: ${Money.format(filter.total(list, s))}",
+            style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
         OutlinedTextField(q, { q = it }, label = { Text("Search name, place or category") }, singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((k, l) in listOf("all" to "All", "month" to "This month", "sort" to "To sort", "auto" to "Auto", "cash" to "By hand")) {
-                FilterChip(selected = filter == k, onClick = { filter = k }, label = { Text(l) })
+                FilterChip(selected = chip == k, onClick = { chip = k }, label = { Text(l) })
             }
         }
         Text("${list.size} transactions · ${Money.format(list.filter { s.outgoing(it) }.sumOf { s.amount(it) })} out · ${Money.format(list.filterNot { s.outgoing(it) }.sumOf { s.amount(it) })} in",
@@ -70,4 +80,5 @@ fun TransactionsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
         }
     }
     open?.let { e -> EntryDialog(repo, s, e) { open = null } }
+    if (editAccount && single != null) AccountEditDialog(repo, s, single) { editAccount = false }
 }

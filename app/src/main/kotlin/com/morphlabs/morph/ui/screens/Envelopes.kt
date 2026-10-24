@@ -125,6 +125,8 @@ private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?, 
                     color = when { e.over -> m.bad; e.reached -> m.good; else -> MaterialTheme.colorScheme.onSurfaceVariant },
                 )
                 if (e.moved != 0L) Text("moved ${if (e.moved > 0) "+" else ""}${Money.format(e.moved, withCurrency = false)}  ", style = MaterialTheme.typography.bodySmall)
+                val openList = com.morphlabs.morph.ui.LocalOpenList.current
+                TextButton(onClick = { openList(com.morphlabs.morph.ui.TxFilter(e.account.label, accountIds = setOf(e.account.id))) }) { Text("History") }
                 if (onMove != null) TextButton(onClick = onMove) { Text("Move in") }
             }
         }

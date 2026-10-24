@@ -117,7 +117,7 @@ class Patterns(private val accounts: List<Account>, private val entries: List<En
             .sortedByDescending { it.total }.take(n)
     }
 
-    data class Regular(val name: String, val accountId: Long?, val count: Int, val average: Long, val everyDays: Int, val monthlyCost: Long, val next: LocalDate)
+    data class Regular(val key: String, val name: String, val accountId: Long?, val count: Int, val average: Long, val everyDays: Int, val monthlyCost: Long, val next: LocalDate)
 
     /**
      * Payments that repeat on a rhythm: daily bets, weekly chama, monthly rent. Needs at least 3
@@ -128,7 +128,7 @@ class Patterns(private val accounts: List<Account>, private val entries: List<En
         return real.filter { it.timestamp >= from && it.counterpartyKey != null && it.kind?.outgoing == true }
             .mapNotNull { e -> spend(e, withFees = false).takeIf { it > 0 }?.let { e to it } }
             .groupBy { it.first.counterpartyKey!! }
-            .mapNotNull { (_, list) ->
+            .mapNotNull { (key, list) ->
                 if (list.size < 3) return@mapNotNull null
                 val days = list.map { day(it.first.timestamp) }.distinct().sorted()
                 if (days.size < 3) return@mapNotNull null
@@ -144,7 +144,7 @@ class Patterns(private val accounts: List<Account>, private val entries: List<En
                 val avg = amounts.sum() / amounts.size
                 val perDay = list.size.toDouble() / days.size // several a day counts
                 Regular(
-                    name = list.last().first.counterparty ?: "?", accountId = list.last().first.categoryId,
+                    key = key, name = list.last().first.counterparty ?: "?", accountId = list.last().first.categoryId,
                     count = list.size, average = avg, everyDays = mean.toInt().coerceAtLeast(1),
                     monthlyCost = (avg * perDay * 30 / mean).toLong(),
                     next = days.last().plusDays(Math.round(mean)),

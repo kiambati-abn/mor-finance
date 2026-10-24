@@ -159,6 +159,7 @@ private fun EnvelopeDialog(repo: MorphRepo, s: Snapshot, e: EnvelopeBook.Envelop
     var amount by remember { mutableStateOf("") }
     var target by remember { mutableStateOf<EnvelopeBook.Envelope?>(null) }
     var editing by remember { mutableStateOf(false) }
+    val openList = com.morphlabs.morph.ui.LocalOpenList.current
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(e.account.label) },
@@ -188,7 +189,10 @@ private fun EnvelopeDialog(repo: MorphRepo, s: Snapshot, e: EnvelopeBook.Envelop
                     }
                 }
                 Gap(8)
-                TextButton(onClick = { editing = true }) { Text("Change its daily/monthly amount") }
+                Row {
+                    TextButton(onClick = { onDismiss(); openList(com.morphlabs.morph.ui.TxFilter(e.account.label, accountIds = setOf(e.account.id))) }) { Text("See transactions") }
+                    TextButton(onClick = { editing = true }) { Text("Change amount") }
+                }
             }
         },
         confirmButton = {

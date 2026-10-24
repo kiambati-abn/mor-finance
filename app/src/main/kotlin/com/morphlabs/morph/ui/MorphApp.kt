@@ -72,15 +72,30 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
     var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
     var page by rememberSaveable { mutableStateOf<Page?>(null) }
     var adding by remember { mutableStateOf(false) }
+    // A drill-down list sits on top of whatever screen opened it; Back returns there.
+    var listFilter by remember { mutableStateOf<TxFilter?>(null) }
     val dash = remember(s) { Dashboard(s, repo.dayOf(System.currentTimeMillis())) }
 
-    BackHandler(enabled = page != null) { page = null }
+    BackHandler(enabled = listFilter != null) { listFilter = null }
+    BackHandler(enabled = listFilter == null && page != null) { page = null }
     BackHandler(enabled = page == null && tab != Tab.HOME) { tab = Tab.HOME }
 
+    androidx.compose.runtime.CompositionLocalProvider(LocalOpenList provides { f: TxFilter -> listFilter = f }) {
+        MainBody(repo, s, dash, tab, { tab = it }, page, { page = it }, listFilter, { listFilter = it }, adding, { adding = it })
+    }
+}
+
+@Composable
+private fun MainBody(
+    repo: MorphRepo, s: Snapshot, dash: Dashboard,
+    tab: Tab, setTab: (Tab) -> Unit, page: Page?, setPage: (Page?) -> Unit,
+    listFilter: TxFilter?, setList: (TxFilter?) -> Unit, adding: Boolean, setAdding: (Boolean) -> Unit,
+) {
+    if (listFilter != null) { TransactionsScreen(repo, s, onBack = { setList(null) }, filter = listFilter); return }
     when (page) {
-        Page.ACCOUNTS -> { AccountsScreen(repo, s, onBack = { page = null }); return }
-        Page.TRANSACTIONS -> { TransactionsScreen(repo, s, onBack = { page = null }); return }
-        Page.PATTERNS -> { PatternsScreen(repo, s, onBack = { page = null }); return }
+        Page.ACCOUNTS -> { AccountsScreen(repo, s, onBack = { setPage(null) }); return }
+        Page.TRANSACTIONS -> { TransactionsScreen(repo, s, onBack = { setPage(null) }); return }
+        Page.PATTERNS -> { PatternsScreen(repo, s, onBack = { setPage(null) }); return }
         null -> Unit
     }
 
@@ -89,7 +104,7 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
             NavigationBar {
                 for (t in Tab.entries) NavigationBarItem(
                     selected = tab == t,
-                    onClick = { tab = t },
+                    onClick = { setTab(t) },
                     icon = {
                         if (t == Tab.SORT && s.pending.isNotEmpty()) BadgedBox(badge = { Badge { Text("${s.pending.size}") } }) { Text(t.emoji, fontSize = 20.sp) }
                         else Text(t.emoji, fontSize = 20.sp)
@@ -99,21 +114,22 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
             }
         },
         floatingActionButton = {
-            if (tab == Tab.HOME) FloatingActionButton(onClick = { adding = true }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
+            if (tab == Tab.HOME) FloatingActionButton(onClick = { setAdding(true) }, containerColor = MaterialTheme.colorScheme.secondaryContainer) {
                 Icon(Icons.Filled.Add, contentDescription = "Add a cash or other transaction")
             }
         },
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(repo, dash, goSort = { tab = Tab.SORT }, goMe = { tab = Tab.ME }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS }, goBudgets = { tab = Tab.ENVELOPES })
+                Tab.HOME -> HomeScreen(repo, dash, goSort = { setTab(Tab.SORT) }, goMe = { setTab(Tab.ME) }, goAll = { setPage(Page.TRANSACTIONS) },
+                    goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { setTab(Tab.ENVELOPES) })
                 Tab.SORT -> SortScreen(repo, s)
-                Tab.ENVELOPES -> EnvelopesScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS })
-                Tab.ME -> MeScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS })
+                Tab.ENVELOPES -> EnvelopesScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) })
+                Tab.ME -> MeScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, goAll = { setPage(Page.TRANSACTIONS) }, goPatterns = { setPage(Page.PATTERNS) })
             }
         }
     }
-    if (adding) AddEntryDialog(repo, s, onDismiss = { adding = false })
+    if (adding) AddEntryDialog(repo, s, onDismiss = { setAdding(false) })
 }
 
 /** Today in Morph's time zone. */

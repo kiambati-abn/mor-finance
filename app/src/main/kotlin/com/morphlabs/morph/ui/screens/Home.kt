@@ -40,6 +40,8 @@ import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.ui.Dashboard
+import com.morphlabs.morph.ui.LocalOpenList
+import com.morphlabs.morph.ui.TxFilter
 import com.morphlabs.morph.sms.InboxImporter
 import com.morphlabs.morph.ui.components.BarChart
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,11 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
+    val openList = LocalOpenList.current
+    fun days(title: String, fromDaysBack: Long, toDaysBack: Long = -1, accounts: Set<Long> = emptySet()) =
+        openList(TxFilter(title, accountIds = accounts, spendingOnly = accounts.isEmpty(),
+            from = d.today.minusDays(fromDaysBack).atStartOfDay(s.zone).toInstant().toEpochMilli(),
+            to = d.today.minusDays(toDaysBack).atStartOfDay(s.zone).toInstant().toEpochMilli()))
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
@@ -73,7 +80,7 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         item { Header(d, refreshing) { refresh() } }
-        item { Hero(d) }
+        item { Hero(d) { days("Spent today", 0) } }
         if ((d.toAssign ?: 0) > 0) item {
             Gap()
             MorphCard(onClick = goBudgets) {
@@ -119,17 +126,17 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         item {
             SectionTitle("Spending")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Today", d.spentToday, Modifier.weight(1f))
-                StatTile("Yesterday", d.spentYesterday, Modifier.weight(1f))
-                StatTile("7 days", d.spent7, Modifier.weight(1f))
-                StatTile("30 days", d.spent30, Modifier.weight(1f))
+                StatTile("Today", d.spentToday, Modifier.weight(1f)) { days("Spent today", 0) }
+                StatTile("Yesterday", d.spentYesterday, Modifier.weight(1f)) { days("Spent yesterday", 1, 0) }
+                StatTile("7 days", d.spent7, Modifier.weight(1f)) { days("Last 7 days", 6) }
+                StatTile("30 days", d.spent30, Modifier.weight(1f)) { days("Last 30 days", 29) }
             }
             if (d.avgDay > 0) {
                 Gap(8)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("Avg / day", d.avgDay, Modifier.weight(1f))
-                    StatTile("Avg / week", d.avgWeek, Modifier.weight(1f))
-                    StatTile("Avg / month", d.avgMonth, Modifier.weight(1f))
+                    StatTile("Avg / day", d.avgDay, Modifier.weight(1f)) { days("Last ${d.avgBasis} days", d.avgBasis - 1) }
+                    StatTile("Avg / week", d.avgWeek, Modifier.weight(1f)) { days("Last ${d.avgBasis} days", d.avgBasis - 1) }
+                    StatTile("Avg / month", d.avgMonth, Modifier.weight(1f)) { days("Last ${d.avgBasis} days", d.avgBasis - 1) }
                 }
                 Text(
                     "Averages over the last ${d.avgBasis} days. " + when {
@@ -153,7 +160,13 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                             marks = bars.indices.filter { bars[it].spike }.toSet(),
                             height = 100,
                             showLabel = { i -> i == bars.lastIndex || i % 2 == 1 },
-                        ) { i -> DayWhy(bars[i]) }
+                        ) { i ->
+                            DayWhy(bars[i])
+                            if (bars[i].total > 0) androidx.compose.material3.TextButton(onClick = {
+                                val back = java.time.temporal.ChronoUnit.DAYS.between(bars[i].date, d.today)
+                                days(dayFmt.format(bars[i].date), back, back - 1)
+                            }) { Text("See that day's transactions →") }
+                        }
                     }
                 }
             }
@@ -161,11 +174,14 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         val top = d.topSpending(30)
         if (top.isNotEmpty()) item {
             SectionTitle("Where it went · 30 days", action = "Patterns", onAction = goPatterns)
-            MorphCard(onClick = goPatterns) {
+            MorphCard {
                 Column(Modifier.padding(16.dp)) {
                     val max = top.first().second.coerceAtLeast(1)
                     for ((a, v) in top) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            Modifier.clip(RoundedCornerShape(8.dp)).clickable { days("${a.label} · 30 days", 29, accounts = setOf(a.id)) },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
                             Text(a.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                             Text(Money.format(v), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                         }
@@ -193,7 +209,7 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         d.insights.firstOrNull()?.let { ins ->
             item {
                 SectionTitle("Today's insight", action = "All", onAction = goMe)
-                InsightCard(ins)
+                InsightCard(ins, s)
             }
         }
         item { SectionTitle("Recent", action = "All", onAction = goAll) }
@@ -223,14 +239,14 @@ private fun Header(d: Dashboard, refreshing: Boolean, onRefresh: () -> Unit) {
 }
 
 @Composable
-private fun Hero(d: Dashboard) {
+private fun Hero(d: Dashboard, onToday: () -> Unit) {
     val m = LocalMorph.current
     var reveal by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     val hidden = d.s.budgetView && !reveal
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(m.hero).padding(20.dp)
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(m.hero).clickable(onClick = onToday).padding(20.dp)
     ) {
-        Text("Spent today", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
+        Text("Spent today ›", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
         Text(Money.format(d.spentToday), color = m.onHero, fontSize = 36.sp, fontWeight = FontWeight.Black)
         Gap(4)
         val safe = d.envelopeToday ?: d.safeToSpend
@@ -292,11 +308,14 @@ private fun DayWhy(b: com.morphlabs.morph.core.insight.Patterns.DayBar) {
     )
 }
 
+/** An insight; when it's about specific transactions, tapping shows them. */
 @Composable
-fun InsightCard(i: Insight) {
+fun InsightCard(i: Insight, s: com.morphlabs.morph.data.Snapshot? = null) {
     val m = LocalMorph.current
     val accent = when (i.tone) { Tone.GOOD -> m.good; Tone.WATCH -> m.gold; Tone.INFO -> MaterialTheme.colorScheme.tertiary }
-    MorphCard {
+    val openList = LocalOpenList.current
+    val drill = (i.accountIds.isNotEmpty() || i.counterpartyKey != null)
+    MorphCard(onClick = if (drill) ({ openList(TxFilter(i.title, accountIds = i.accountIds, counterpartyKey = i.counterpartyKey, from = i.since)) }) else null) {
         Row(Modifier.padding(16.dp)) {
             Box(Modifier.width(4.dp).height(48.dp).clip(RoundedCornerShape(2.dp)).background(accent))
             Spacer(Modifier.width(12.dp))

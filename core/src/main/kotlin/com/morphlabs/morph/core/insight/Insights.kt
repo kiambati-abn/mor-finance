@@ -19,7 +19,13 @@ import kotlin.math.roundToInt
 
 enum class Tone { GOOD, WATCH, INFO }
 
-data class Insight(val id: String, val emoji: String, val title: String, val body: String, val tone: Tone)
+data class Insight(
+    val id: String, val emoji: String, val title: String, val body: String, val tone: Tone,
+    /** What tapping it shows: transactions touching these accounts / this counterparty, since [since]. */
+    val accountIds: Set<Long> = emptySet(),
+    val counterpartyKey: String? = null,
+    val since: Long? = null,
+)
 
 /** Spending totals per account and period, shared by the home screen and the insights. */
 class Spending(private val accounts: List<Account>, private val entries: List<Entry>, private val zone: ZoneId) {
@@ -90,10 +96,11 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
             val d = (thisWeek[it] ?: 0) - (lastWeek[it] ?: 0)
             " Biggest change: ${name(it)} (${if (d > 0) "+" else ""}${Money.format(d)})."
         } ?: ""
+        val drill = mover?.let { setOf(it) } ?: emptySet()
         return if (change > 0.1) Insight("wow", "📈", "Spending up ${pct(change)} this week",
-            "${Money.format(a)} in the last 7 days vs ${Money.format(b)} the week before.$moverText", Tone.WATCH)
+            "${Money.format(a)} in the last 7 days vs ${Money.format(b)} the week before.$moverText", Tone.WATCH, accountIds = drill, since = mid)
         else if (change < -0.1) Insight("wow", "📉", "Spending down ${pct(-change)} this week",
-            "${Money.format(a)} in the last 7 days vs ${Money.format(b)} the week before.$moverText Keep it up.", Tone.GOOD)
+            "${Money.format(a)} in the last 7 days vs ${Money.format(b)} the week before.$moverText Keep it up.", Tone.GOOD, accountIds = drill, since = mid)
         else Insight("wow", "⚖️", "A steady week", "You spent ${Money.format(a)}, about the same as last week.$moverText", Tone.INFO)
     }
 
@@ -106,7 +113,7 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
         if (fees < 100 * 100) return null
         return Insight("fees", "🧾", "${Money.format(fees)} in M-Pesa fees this month",
             "Paying a till (Buy Goods) is free for you; sending to people, paybills and withdrawals cost. " +
-                "Fewer, bigger withdrawals and paying tills directly cut this down.", Tone.WATCH)
+                "Fewer, bigger withdrawals and paying tills directly cut this down.", Tone.WATCH, accountIds = feeIds, since = start)
     }
 
     fun repeatedSmall(today: LocalDate): Insight? {
@@ -114,12 +121,12 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
         val groups = entries.filter {
             it.timestamp >= since && it.kind?.outgoing == true && it.counterpartyKey != null && it.size() <= 300 * 100
         }.groupBy { it.counterpartyKey }
-        val (_, list) = groups.filter { it.value.size >= 5 }.maxByOrNull { (_, l) -> l.sumOf { it.size() } } ?: return null
+        val (key, list) = groups.filter { it.value.size >= 5 }.maxByOrNull { (_, l) -> l.sumOf { it.size() } } ?: return null
         val total = list.sumOf { it.size() }
         val who = list.first().counterparty ?: "the same place"
         return Insight("small", "🔁", "${list.size} small payments to $who this week",
             "They add up to ${Money.format(total)}. Small, frequent payments are the easiest leak to miss. " +
-                "At this rate that's about ${Money.format(total * 30 / 7)} a month.", Tone.WATCH)
+                "At this rate that's about ${Money.format(total * 30 / 7)} a month.", Tone.WATCH, counterpartyKey = key, since = since)
     }
 
     fun runway(today: LocalDate): Insight? {
@@ -162,10 +169,12 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
         val wins = monthly.filter { it.progress < elapsed - 0.1 }
         return when {
             over != null -> Insight("pace", "🚨", "${over.account.name} is over budget",
-                "Over by ${Money.format(over.used - over.available)}. Move budget from another envelope to cover it, so the plan stays honest.", Tone.WATCH)
+                "Over by ${Money.format(over.used - over.available)}. Move budget from another envelope to cover it, so the plan stays honest.", Tone.WATCH,
+                accountIds = setOf(over.account.id), since = spending.startOf(month.atDay(1)))
             ahead != null -> Insight("pace", "🏃", "${ahead.account.name} is running ahead",
                 "${pct(ahead.progress.toDouble())} used with ${pct(elapsed)} of the month gone. " +
-                    "${Money.format(ahead.left)} left for ${month.lengthOfMonth() - today.dayOfMonth} days.", Tone.WATCH)
+                    "${Money.format(ahead.left)} left for ${month.lengthOfMonth() - today.dayOfMonth} days.", Tone.WATCH,
+                accountIds = setOf(ahead.account.id), since = spending.startOf(month.atDay(1)))
             wins.isNotEmpty() -> Insight("pace", "🌟", "${wins.size} envelope${if (wins.size > 1) "s" else ""} on track",
                 wins.take(3).joinToString(", ") { it.account.name } + " are below pace for this point in the month.", Tone.GOOD)
             else -> null
@@ -209,7 +218,8 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
         val biggest = debts.maxBy { it.second }
         return Insight("debts", "⛓️", "You owe ${Money.format(total)} in total",
             "Biggest: ${biggest.first.name} (${Money.format(biggest.second)}). Clear the most expensive debt first " +
-                "(Fuliza charges daily), and give every debt a monthly repayment target in its envelope.", Tone.INFO)
+                "(Fuliza charges daily), and give every debt a monthly repayment target in its envelope.", Tone.INFO,
+            accountIds = debts.map { it.first.id }.toSet())
     }
 
     fun emergencyFund(today: LocalDate): Insight? {
