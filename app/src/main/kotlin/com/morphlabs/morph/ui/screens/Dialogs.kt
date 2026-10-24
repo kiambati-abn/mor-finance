@@ -318,7 +318,7 @@ private fun EditManualDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: 
 
 /** Spread one transaction over several accounts. The parts must add up, so balances never change. */
 @Composable
-private fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
+fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: ((com.morphlabs.morph.core.game.Game.Reward) -> Unit)? = null, onDismiss: () -> Unit) {
     val total = s.amount(e)
     val existing = Posting.categorySide(e, s.structural)
     val parts = remember {
@@ -358,7 +358,13 @@ private fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () ->
         confirmButton = {
             TextButton(enabled = left == 0L && parts.isNotEmpty(), onClick = {
                 val list = parts.map { it.first.id to (Money.parse(it.second) ?: 0L) }
-                Thread { repo.split(e.id, list) }.start()
+                val pending = e.status == com.morphlabs.morph.core.model.EntryStatus.NEEDS_REVIEW
+                Thread {
+                    if (pending) {
+                        val r = repo.splitAndSort(e.id, list)
+                        onSorted?.invoke(r)
+                    } else repo.split(e.id, list)
+                }.start()
                 onDismiss()
             }) { Text("Save split") }
         },

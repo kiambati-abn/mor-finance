@@ -44,12 +44,13 @@ class QuickSortActivity : ComponentActivity() {
         val entryId = intent.getLongExtra(Notifier.EXTRA_ENTRY, -1)
         Notifier.cancel(this, entryId)
         val repo = MorphRepo.get(this)
-        setContent { QuickSort(repo, entryId, theme = repo.theme) { finish() } }
+        val split = intent.getBooleanExtra(Notifier.EXTRA_SPLIT, false)
+        setContent { QuickSort(repo, entryId, theme = repo.theme, split) { finish() } }
     }
 }
 
 @Composable
-private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -> Unit) {
+private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, startSplit: Boolean, close: () -> Unit) {
     val version by repo.version.collectAsState()
     var s by remember { mutableStateOf<Snapshot?>(null) }
     var burst by remember { mutableStateOf<Pair<Int, String>?>(null) }
@@ -89,7 +90,7 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
                 ) {
                     SortPanel(repo, snap, e, onSorted = { r, label, _ ->
                         if (com.morphlabs.morph.core.game.Game.DAY_COMPLETE in r.reasons) party = r.stars else burst = r.stars to label
-                    }, onSkip = null)
+                    }, onSkip = null, startSplit = startSplit)
                 }
             } else if (snap != null && e == null) {
                 LaunchedEffect(Unit) { close() }

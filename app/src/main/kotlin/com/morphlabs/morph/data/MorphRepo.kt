@@ -393,6 +393,17 @@ class MorphRepo private constructor(context: Context) {
         changed()
     }
 
+    /**
+     * Sorts a waiting transaction by splitting it, e.g. Naivas 2,000 = Groceries 1,500 + Household 500.
+     * Earns the same stars as sorting (and can be undone the same way).
+     */
+    fun splitAndSort(entryId: Long, parts: List<Pair<Long, Long>>): Game.Reward {
+        val main = parts.filter { it.second > 0 }.maxByOrNull { it.second }?.first ?: return Game.Reward(0, emptyList())
+        val reward = categorize(entryId, main)
+        split(entryId, parts)
+        return reward
+    }
+
     /** Splits one transaction across several accounts, e.g. a supermarket bill into Groceries + Household. */
     fun split(entryId: Long, parts: List<Pair<Long, Long>>) {
         val s = snapshot()

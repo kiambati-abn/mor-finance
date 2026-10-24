@@ -30,6 +30,7 @@ object Notifier {
 
     const val EXTRA_ENTRY = "entry_id"
     const val EXTRA_ACCOUNT = "account_id"
+    const val EXTRA_SPLIT = "split"
     const val ACTION_FILE = "com.morphlabs.morph.FILE"
     const val ACTION_CONFIRM = "com.morphlabs.morph.CONFIRM"
     const val ACTION_UNDO = "com.morphlabs.morph.UNDO"
@@ -78,7 +79,7 @@ object Notifier {
             .setSmallIcon(R.drawable.ic_stat_morph)
             .setColor(GOLD)
             .setContentTitle(headline(context, e))
-            .setContentText("What was it? Tap an answer and earn ⭐")
+            .setContentText("What was it? Tap an answer, or open for more (⭐)")
             .setContentIntent(quickSortIntent(context, e.id))
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)
@@ -86,7 +87,8 @@ object Notifier {
             val a = s.byId[sug.accountId] ?: return@forEachIndexed
             b.addAction(action(context, a.label, fileIntent(context, e.id, a.id, i)))
         }
-        b.addAction(action(context, "More…", quickSortIntent(context, e.id)))
+        // Two best guesses and Split as buttons; tapping the notification itself shows every choice.
+        b.addAction(action(context, "✂️ Split", quickSortIntent(context, e.id, split = true)))
         notify(context, e.id, b.build())
     }
 
@@ -195,10 +197,10 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-    fun quickSortIntent(context: Context, entryId: Long): PendingIntent =
+    fun quickSortIntent(context: Context, entryId: Long, split: Boolean = false): PendingIntent =
         PendingIntent.getActivity(
-            context, requestCode(entryId, 9),
-            Intent(context, QuickSortActivity::class.java).putExtra(EXTRA_ENTRY, entryId)
+            context, requestCode(entryId, if (split) 6 else 9),
+            Intent(context, QuickSortActivity::class.java).putExtra(EXTRA_ENTRY, entryId).putExtra(EXTRA_SPLIT, split)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )

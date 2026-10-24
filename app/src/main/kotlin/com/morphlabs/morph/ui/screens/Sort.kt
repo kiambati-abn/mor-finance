@@ -244,7 +244,8 @@ private fun SwipeArea(onRight: () -> Unit, onLeft: () -> Unit, content: @Composa
 
 /** One transaction, the best guesses as big buttons, and everything else one tap away. */
 @Composable
-fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, String, Int) -> Unit, onSkip: (() -> Unit)?) {
+fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, String, Int) -> Unit, onSkip: (() -> Unit)?, startSplit: Boolean = false) {
+    var splitting by remember(e.id) { mutableStateOf(startSplit) }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     val guess = remember(e.id, s) { s.guess(e, limit = 4) }
@@ -307,6 +308,7 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { showAll = !showAll }, modifier = Modifier.weight(1f)) { Text(if (showAll) "Hide" else "Something else…") }
+        OutlinedButton(onClick = { splitting = true }) { Text("✂️ Split") }
         if (onSkip != null) TextButton(onClick = onSkip, modifier = Modifier.weight(1f)) { Text("Skip for now") }
     }
     if (showAll) {
@@ -315,6 +317,7 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
     }
     Gap(12)
     OutlinedTextField(note, { note = it }, label = { Text("Note (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    if (splitting) SplitDialog(repo, s, e, onSorted = { r -> onSorted(r, "Split", 1) }) { splitting = false }
     e.smsBody?.let {
         Gap(12)
         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
