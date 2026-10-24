@@ -31,13 +31,13 @@ Every install or update after that:
 The script downloads the newest Release and runs `adb install -r`, which keeps your data.
 **Never uninstall Morph**: uninstalling deletes its data. Make a backup first (Me → Back up to a file).
 
-To share with friends, run `bash scripts/get-apk.sh` to put the latest `.apk` in Downloads, then send it to them. On their phone they open it and allow
+To share with friends, run `bash scripts/get-apk.sh` to put the latest `.apk` in `~/MAX`, then send it to them. On their phone they open it and allow
 "install unknown apps". If Android then blocks the SMS permission, they go to App info → ⋮ → **Allow restricted settings**.
 
 ## Updating from a bundle file (no GitHub access for Claude)
 
-1. Download `mor-finance-latest.bundle` into Downloads.
-2. Run `bash ~/morph-update.sh`.
+1. Save `mor-finance-latest.bundle` into `~/MAX` (replace the old one).
+2. Run `bash ~/MAX/morph-update.sh`.
 
 The script loads the changes, pushes them to GitHub, waits for the build, installs the app on the phone plugged in over USB, and deletes the downloaded file.
 
