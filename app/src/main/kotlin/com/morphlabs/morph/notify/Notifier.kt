@@ -136,7 +136,13 @@ object Notifier {
         val b = Notification.Builder(context, CH_REWARD)
             .setSmallIcon(R.drawable.ic_stat_morph)
             .setColor(GOLD)
-            .setContentTitle(if (reward.stars > 0) "+${reward.stars} ⭐  ${reward.reasons.joinToString(" · ")}" else "Saved")
+            .setContentTitle(
+                when {
+                    Game.DAY_COMPLETE in reward.reasons -> "🦋 Day complete! +${reward.stars} ⭐  Every transaction today is sorted"
+                    reward.stars > 0 -> "+${reward.stars} ⭐  ${reward.reasons.joinToString(" · ")}"
+                    else -> "Saved"
+                }
+            )
             .setContentText(text.ifEmpty { "${level.emoji} ${level.name} · ${s.stars} ⭐" })
             .setSubText("${level.emoji} ${s.stars} ⭐")
             .setTimeoutAfter(8_000)

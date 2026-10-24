@@ -83,6 +83,7 @@ Your choices always outweigh starter knowledge. Correcting an auto-filed item te
 ## The game
 
 - **Stars:** +1 for each item sorted, +2 if you sort it within 15 minutes of paying, +5 once a day for reaching inbox zero, +1 for confirming an auto-filed item or adding one by hand.
+- **Day complete:** when every one of today's transactions is sorted, +3 ⭐ once a day, with a full-screen celebration (butterflies, stars, streak, double buzz) and a "🦋 Day complete!" notification.
 - **Streak:** consecutive days with nothing left unsorted. Days with no transactions don't break it.
 - **Levels:** 🥚 Egg → 🐛 Caterpillar (25) → 🌀 Cocoon (100) → 🦋 Butterfly (300) → 👑 Monarch (1000).
 
@@ -123,6 +124,8 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 
 ## Later
 
+- **Financial tips:** a short tip of the day based on your own numbers, plus a weekly "lesson".
+- **AI coach (optional, opt-in):** "Ask Morph" questions and a weekly review from an AI model. Only summaries leave the phone (category totals, trends, envelope status), never SMS text, names or phone numbers. The API key lives in a small server Morph calls, never inside the APK.
 - Hustler Fund / HELB messages: confirm the exact wording from real SMS and add interest/fee splitting.
 - M-Pesa statement PDF import for older history.
 - A home-screen widget for quick cash entries.

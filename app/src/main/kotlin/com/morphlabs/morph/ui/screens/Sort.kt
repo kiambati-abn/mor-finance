@@ -68,6 +68,7 @@ private data class LastSort(val entryId: Long, val label: String, val count: Int
 @Composable
 fun SortScreen(repo: MorphRepo, s: Snapshot) {
     var burst by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var party by remember { mutableStateOf<Int?>(null) }
     var skipped by remember { mutableStateOf(listOf<Long>()) }
     // Everything sorted while this screen is open, oldest first: lets you step back.
     var history by remember { mutableStateOf(listOf<Long>()) }
@@ -141,7 +142,8 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
             ) { SortPanel(
                 repo, s, current,
                 onSorted = { reward, label, count ->
-                    if (reward.stars > 0) burst = reward.stars to label
+                    if (Game.DAY_COMPLETE in reward.reasons) party = reward.stars
+                    else if (reward.stars > 0) burst = reward.stars to label
                     last = LastSort(current.id, label, count)
                     if (revisiting == null) history = (history - current.id) + current.id
                     backIndex = null
@@ -153,6 +155,13 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
             Gap(72)
         }
         burst?.let { (stars, label) -> StarBurst(stars, label) { burst = null } }
+        party?.let { stars ->
+            val next = Game.nextLevel(s.stars)
+            com.morphlabs.morph.ui.components.Celebration(
+                stars, Game.streak(s.entries, today, s.zone),
+                if (next != null) "${Game.level(s.stars).emoji} ${s.stars} ⭐ · ${next.minStars - s.stars} to ${next.name} ${next.emoji}" else "👑 Top level",
+            ) { party = null }
+        }
         cashOpen?.let { (w, left) -> CashSpreadDialog(repo, s, w, left) { cashOpen = null } }
         last?.let { l ->
             LaunchedEffect(l) { delay(6_000); if (last == l) last = null }

@@ -35,11 +35,20 @@ object Game {
 
     data class Reward(val stars: Int, val reasons: List<String>)
 
-    fun rewardForSorting(txTime: Long, sortedAt: Long, inboxNowEmpty: Boolean, alreadyGotInboxBonusToday: Boolean): Reward {
+    /** The reason the app celebrates big for: every one of today's transactions is sorted. */
+    const val DAY_COMPLETE = "Day complete"
+
+    fun rewardForSorting(
+        txTime: Long, sortedAt: Long, inboxNowEmpty: Boolean, alreadyGotInboxBonusToday: Boolean,
+        dayNowComplete: Boolean = false, alreadyGotDayBonus: Boolean = false,
+    ): Reward {
         var stars = 1
         val reasons = mutableListOf("Sorted")
         if (sortedAt - txTime in 0..FRESH_WINDOW_MS) {
             stars += 2; reasons += "Fresh"
+        }
+        if (dayNowComplete && !alreadyGotDayBonus) {
+            stars += 3; reasons += DAY_COMPLETE
         }
         if (inboxNowEmpty && !alreadyGotInboxBonusToday) {
             stars += 5; reasons += "Inbox zero"

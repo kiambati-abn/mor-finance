@@ -53,6 +53,7 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
     val version by repo.version.collectAsState()
     var s by remember { mutableStateOf<Snapshot?>(null) }
     var burst by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var party by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(version) { s = withContext(Dispatchers.IO) { repo.snapshot() } }
     MorphTheme(theme) {
         Box(
@@ -62,7 +63,7 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
             val snap = s
             val e = snap?.entries?.firstOrNull { it.id == entryId }
             val cashLeft = snap?.cashToSpread?.firstOrNull { it.first.id == entryId }?.second
-            if (snap != null && e != null && burst == null && e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) {
+            if (snap != null && e != null && burst == null && party == null && e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) {
                 Column(
                     Modifier.fillMaxWidth().heightIn(max = 640.dp)
                         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
@@ -76,7 +77,7 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
                         if (stars > 0) burst = stars to "Cash spread" else close()
                     }
                 }
-            } else if (snap != null && e != null && burst == null) {
+            } else if (snap != null && e != null && burst == null && party == null) {
                 Column(
                     Modifier.fillMaxWidth().heightIn(max = 640.dp)
                         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
@@ -86,12 +87,18 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
                         .navigationBarsPadding()
                         .padding(20.dp)
                 ) {
-                    SortPanel(repo, snap, e, onSorted = { r, label, _ -> burst = r.stars to label }, onSkip = null)
+                    SortPanel(repo, snap, e, onSorted = { r, label, _ ->
+                        if (com.morphlabs.morph.core.game.Game.DAY_COMPLETE in r.reasons) party = r.stars else burst = r.stars to label
+                    }, onSkip = null)
                 }
             } else if (snap != null && e == null) {
                 LaunchedEffect(Unit) { close() }
             }
             burst?.let { (stars, label) -> StarBurst(stars, label) { close() } }
+            party?.let { stars ->
+                val g = com.morphlabs.morph.core.game.Game
+                com.morphlabs.morph.ui.components.Celebration(stars, g.streak(snap?.entries.orEmpty(), repo.dayOf(System.currentTimeMillis()), repo.zone), "${g.level(snap?.stars ?: 0).emoji} ${snap?.stars ?: 0} ⭐") { close() }
+            }
         }
     }
 }

@@ -212,9 +212,17 @@ class MorphRepo private constructor(context: Context) {
             recentlySorted && !wasPending -> Game.Reward(0, listOf("Changed"))
             wasPending -> {
                 val left = s.pending.count { it.id != entryId }
-                val today = LocalDate.now(zone).toString()
-                Game.rewardForSorting(e.timestamp, now, left == 0, today in s.bonusDays)
-                    .also { if (left == 0 && today !in s.bonusDays) rewardIds += addReward(0, BONUS_PREFIX + today) }
+                val todayDate = LocalDate.now(zone)
+                val today = todayDate.toString()
+                // Today's transactions are all sorted now (and there were some today).
+                val todays = s.entries.filter { it.source != EntrySource.SYSTEM && dayOf(it.timestamp) == todayDate }
+                val dayDone = todays.isNotEmpty() && todays.none { it.id != entryId && it.status == EntryStatus.NEEDS_REVIEW }
+                val dayBonusAlready = (DAY_PREFIX + today) in s.bonusDays
+                Game.rewardForSorting(e.timestamp, now, left == 0, today in s.bonusDays, dayDone, dayBonusAlready)
+                    .also {
+                        if (left == 0 && today !in s.bonusDays) rewardIds += addReward(0, BONUS_PREFIX + today)
+                        if (dayDone && !dayBonusAlready) rewardIds += addReward(0, BONUS_PREFIX + DAY_PREFIX + today)
+                    }
             }
             e.categoryId == accountId -> Game.Reward(1, listOf("Confirmed"))
             else -> Game.Reward(1, listOf("Taught Morph"))
@@ -709,6 +717,8 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_LAST_SMS = "last_sms_date"
         private const val BONUS_PREFIX = "inbox-zero:"
+        /** Stored after BONUS_PREFIX, so bonusDays holds "day-done:2026-10-24" for the daily bonus. */
+        private const val DAY_PREFIX = "day-done:"
         private const val KEY_BACKUP_URI = "backup_uri"
         private const val KEY_AUTOPILOT = "autopilot"
         private const val KEY_BACKUP_EVERY = "backup_every_days"
