@@ -64,7 +64,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
     var startOver by remember { mutableStateOf(false) }
     var startDialog by remember { mutableStateOf(false) }
-    var reveal by remember { mutableStateOf(false) }
+    val revealState = com.morphlabs.morph.ui.LocalReveal.current
     val autoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
             val err = withContext(Dispatchers.IO) {
@@ -111,7 +111,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
         }
         item {
             SectionTitle("Net worth")
-            if (s.budgetView && !reveal) MorphCard(onClick = { reveal = true }) {
+            if (com.morphlabs.morph.ui.budgetMode(s)) MorphCard(onClick = { revealState.value = true }) {
                 Column(Modifier.padding(16.dp)) {
                     Text("•••••• 👁", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                     Text("Hidden by Budget view, so you go by what's left in your envelopes. Tap to peek.", style = MaterialTheme.typography.bodySmall)

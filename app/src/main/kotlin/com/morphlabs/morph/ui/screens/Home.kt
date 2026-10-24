@@ -253,8 +253,9 @@ private fun Header(d: Dashboard, refreshing: Boolean, onRefresh: () -> Unit) {
 @Composable
 private fun Hero(d: Dashboard, onToday: () -> Unit) {
     val m = LocalMorph.current
-    var reveal by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
-    val hidden = d.s.budgetView && !reveal
+    val revealState = com.morphlabs.morph.ui.LocalReveal.current
+    val reveal = revealState.value
+    val hidden = com.morphlabs.morph.ui.budgetMode(d.s)
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(m.hero).clickable(onClick = onToday).padding(20.dp)
     ) {
@@ -293,7 +294,7 @@ private fun Hero(d: Dashboard, onToday: () -> Unit) {
             }
             if (d.s.budgetView) Text(
                 if (reveal) "🙈" else "👁", fontSize = 22.sp,
-                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { reveal = !reveal }.padding(6.dp),
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { revealState.value = !revealState.value }.padding(6.dp),
             )
         }
     }

@@ -80,7 +80,8 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
     BackHandler(enabled = listFilter == null && page != null) { page = null }
     BackHandler(enabled = page == null && tab != Tab.HOME) { tab = Tab.HOME }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalOpenList provides { f: TxFilter -> listFilter = f }) {
+    val reveal = remember { mutableStateOf(false) }
+    androidx.compose.runtime.CompositionLocalProvider(LocalOpenList provides { f: TxFilter -> listFilter = f }, LocalReveal provides reveal) {
         MainBody(repo, s, dash, tab, { tab = it }, page, { page = it }, listFilter, { listFilter = it }, adding, { adding = it })
     }
 }

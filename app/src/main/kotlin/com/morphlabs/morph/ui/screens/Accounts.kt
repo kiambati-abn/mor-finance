@@ -85,7 +85,13 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        BackHeader("Accounts", onBack) { TextButton(onClick = { creating = true }) { Text("+ Add") } }
+        BackHeader("Accounts", onBack) {
+            com.morphlabs.morph.ui.EyeToggle(s)
+            TextButton(onClick = { creating = true }) { Text("+ Add") }
+        }
+        val budgetMode = com.morphlabs.morph.ui.budgetMode(s)
+        if (budgetMode) Text("Budget view: showing what's left in each budget. Tap 👁 for real balances.",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
         Column(Modifier.padding(horizontal = 16.dp)) {
             androidx.compose.material3.OutlinedTextField(
                 query, { query = it }, singleLine = true, label = { Text("🔍 Find an account") },
@@ -104,7 +110,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
             for ((label, list) in sections) {
                 item(key = "h$label") { SectionTitle(label) }
                 items(list, key = { it.id }) { a ->
-                    AccountRow(s, a, today, month[a.id] ?: 0L,
+                    AccountRow(s, a, today, month[a.id] ?: 0L, budgetMode,
                         onOpen = { openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id))) },
                         onEdit = { editing = a })
                 }
@@ -123,8 +129,10 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
  * "Spent Ksh 1,300 of 2,000 · 65%". Otherwise its balance, or what moved this month.
  */
 @Composable
-private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, monthNet: Long, onOpen: () -> Unit, onEdit: () -> Unit) {
-    val h = s.health(a.id, today)
+private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, monthNet: Long, budgetMode: Boolean, onOpen: () -> Unit, onEdit: () -> Unit) {
+    // Budget view shows budget amounts; real view shows real money (spent this month, balances).
+    val h = if (budgetMode || !s.budgetView) s.health(a.id, today) else null
+    val envelope = if (budgetMode) s.envelopesOn(today).firstOrNull { it.account.id == a.id } else null
     val m = com.morphlabs.morph.ui.theme.LocalMorph.current
     MorphCard(Modifier.padding(bottom = 6.dp), onClick = onOpen) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
@@ -132,9 +140,10 @@ private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, mont
                 Text(a.label + if (a.archived) " (archived)" else "", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 val (big, small) = when {
                     h != null -> (if (h.left < 0) "−" + Money.format(-h.left) else Money.format(h.left)) to (if (h.left < 0) "over" else if (a.period == BudgetPeriod.DAILY) "left today" else "left")
-                    a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE -> Money.format(monthNet) to "this month"
+                    envelope != null -> Money.format(envelope.left) to "in envelope"
+                    budgetMode && a.group == AccountGroup.WALLET -> "••••" to "in envelopes"
+                    a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE -> Money.format(monthNet) to "spent this month"
                     a.type == com.morphlabs.morph.core.model.AccountType.INCOME -> Money.format(-monthNet) to "in this month"
-                    s.budgetView && a.group == AccountGroup.WALLET -> "••••" to "balance"
                     else -> Money.format(s.balance(a)) to (if (a.group == AccountGroup.DEBT) "owed" else "balance")
                 }
                 Column(horizontalAlignment = Alignment.End) {

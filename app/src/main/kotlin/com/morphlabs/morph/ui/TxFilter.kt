@@ -42,5 +42,25 @@ data class TxFilter(
     }.let { if (accountIds.isNotEmpty() && accountIds.all { s.byId[it]?.type?.debitNormal == false }) -it else it }
 }
 
+/**
+ * The 👁 toggle, shared by every screen: while Budget view is on, false shows budget amounts
+ * (what's left), true peeks at real balances. Resets when the app restarts.
+ */
+val LocalReveal = staticCompositionLocalOf { androidx.compose.runtime.mutableStateOf(false) }
+
+/** True when Budget view is on and you haven't tapped 👁 to peek. */
+@androidx.compose.runtime.Composable
+fun budgetMode(s: Snapshot): Boolean = s.budgetView && !LocalReveal.current.value
+
+/** The 👁 / 🙈 button that switches between budget amounts and real balances. */
+@androidx.compose.runtime.Composable
+fun EyeToggle(s: Snapshot) {
+    if (!s.budgetView) return
+    val reveal = LocalReveal.current
+    androidx.compose.material3.TextButton(onClick = { reveal.value = !reveal.value }) {
+        androidx.compose.material3.Text(if (reveal.value) "🙈 Budget view" else "👁 Real balances")
+    }
+}
+
 /** Opens the transaction list for a filter, from anywhere in the app. */
 val LocalOpenList = staticCompositionLocalOf<(TxFilter) -> Unit> { {} }

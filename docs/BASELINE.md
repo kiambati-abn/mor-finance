@@ -93,7 +93,7 @@ Every amount opens the list of its transactions. The list shows its total, and e
 - **Money in** → To assign. **Fill my envelopes** tops each envelope up to its amount, fixed costs first. A monthly envelope fills to its monthly amount; a daily one (Food 300/day) fills to 300 × the days left in the month. You can also add, take back, or move money between envelopes by hand.
 - **Spending** on a category takes it out of that envelope. Saving into Chama, or repaying HELB, uses up those envelopes. Spending on something with no envelope comes out of To assign.
 - **Leftovers carry over.** Overspending turns an envelope red; cover it by moving money from another.
-- **Budget view** hides real wallet balances and net worth; you see "In envelopes" and "To assign" instead. Tap 👁 to peek. Sort buttons and notifications show what's left, e.g. "🍻 Friends · Ksh 100 left".
+- **Budget view** hides real wallet balances and net worth; you see "In envelopes" and "To assign" instead. On Accounts, spending accounts show what's left, savings and debt envelopes show what's in them, and wallets show ••••. **One 👁 switch** (on Home, Accounts and Me) flips the whole app between budget amounts and real balances; it resets to Budget view when the app restarts. Sort buttons and notifications show what's left, e.g. "🍻 Friends · Ksh 100 left".
 - Without envelopes, the daily/monthly amounts work as simple limits and targets, as before.
 
 ## Learning (how auto-filing works)
