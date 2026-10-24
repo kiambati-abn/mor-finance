@@ -65,7 +65,10 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Text(Money.format(s.balance(a)), style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                if (s.budgetView && a.group == AccountGroup.WALLET) "••••" else Money.format(s.balance(a)),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
                         }
                     }
                 }

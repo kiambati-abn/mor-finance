@@ -59,6 +59,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
     var editing by remember { mutableStateOf<Account?>(null) }
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
     var startOver by remember { mutableStateOf(false) }
+    var reveal by remember { mutableStateOf(false) }
     val autoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
             val err = withContext(Dispatchers.IO) {
@@ -105,7 +106,12 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
         }
         item {
             SectionTitle("Net worth")
-            MorphCard {
+            if (s.budgetView && !reveal) MorphCard(onClick = { reveal = true }) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("•••••• 👁", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                    Text("Hidden by Budget view, so you go by what's left in your envelopes. Tap to peek.", style = MaterialTheme.typography.bodySmall)
+                }
+            } else MorphCard {
                 Column(Modifier.padding(16.dp)) {
                     Text(Money.format(d.netWorth.net), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
                     Text("${Money.format(d.netWorth.assets)} you have − ${Money.format(d.netWorth.liabilities)} you owe", style = MaterialTheme.typography.bodySmall)
@@ -146,6 +152,31 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                                 }
                             }) { Text("Back up now") }
                             TextButton(onClick = { autoLauncher.launch("morph-backup.json") }) { Text("Change file") }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            SectionTitle("Envelopes & Budget view")
+            MorphCard {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("✉️ Envelopes", fontWeight = FontWeight.SemiBold)
+                            Text("Give every shilling a job; each envelope shows what's left.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        androidx.compose.material3.Switch(checked = s.envelopesStart != null, onCheckedChange = { on -> Thread { repo.setEnvelopes(on) }.start() })
+                    }
+                    if (s.envelopesStart != null) {
+                        Gap(8)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("🙈 Budget view", fontWeight = FontWeight.SemiBold)
+                                Text("Hide real balances and net worth; show what's left in envelopes instead. Tap 👁 to peek any time.",
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            androidx.compose.material3.Switch(checked = s.budgetView, onCheckedChange = { on -> Thread { repo.setBudgetView(on) }.start() })
                         }
                     }
                 }

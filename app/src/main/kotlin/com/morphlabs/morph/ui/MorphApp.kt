@@ -106,7 +106,7 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(repo, dash, goSort = { tab = Tab.SORT }, goMe = { tab = Tab.ME }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS })
+                Tab.HOME -> HomeScreen(repo, dash, goSort = { tab = Tab.SORT }, goMe = { tab = Tab.ME }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS }, goBudgets = { tab = Tab.ENVELOPES })
                 Tab.SORT -> SortScreen(repo, s)
                 Tab.ENVELOPES -> EnvelopesScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS })
                 Tab.ME -> MeScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS })

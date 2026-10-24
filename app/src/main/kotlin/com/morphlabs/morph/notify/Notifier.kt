@@ -96,7 +96,7 @@ object Notifier {
             .setSmallIcon(R.drawable.ic_stat_morph)
             .setColor(GOLD)
             .setContentTitle(headline(context, e))
-            .setContentText("Filed under ${a.label}. Right?")
+            .setContentText("Filed under ${a.label}" + (s.envelopeLeft(a.id, MorphRepo.get(context).dayOf(System.currentTimeMillis()))?.let { " · ${Money.format(it)} left" } ?: "") + ". Right?")
             .setContentIntent(quickSortIntent(context, e.id))
             .setAutoCancel(true)
             .addAction(action(context, "👍 Yes (+1⭐)", confirmIntent(context, e.id)))
@@ -111,8 +111,11 @@ object Notifier {
         val s = repo.snapshot()
         val streak = Game.streak(s.entries, repo.dayOf(System.currentTimeMillis()), repo.zone)
         val level = Game.level(s.stars)
+        val entry = s.entries.firstOrNull { it.id == entryId }
+        val left = entry?.categoryId?.let { s.envelopeLeft(it, repo.dayOf(System.currentTimeMillis())) }
         val text = buildString {
             if (filedUnder != null) append("Filed under $filedUnder")
+            if (left != null) append(" · ${Money.format(left)} left")
             if (streak > 1) append(" · 🔥 $streak-day streak")
         }
         val b = Notification.Builder(context, CH_REWARD)

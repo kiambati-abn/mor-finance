@@ -1,6 +1,8 @@
 package com.morphlabs.morph.data
 
+import com.morphlabs.morph.core.budget.Allocation
 import com.morphlabs.morph.core.budget.BudgetMove
+import com.morphlabs.morph.core.budget.EnvelopeBook
 import com.morphlabs.morph.core.learn.Categorizer
 import com.morphlabs.morph.core.learn.Guess
 import com.morphlabs.morph.core.learn.Observation
@@ -24,6 +26,11 @@ class Snapshot(
     /** Oldest first. */
     val entries: List<Entry>,
     val moves: List<BudgetMove>,
+    val allocations: List<Allocation> = emptyList(),
+    /** When envelopes were switched on, or null while they're off. */
+    val envelopesStart: Long? = null,
+    /** Budget view: hide real balances, show what's left in envelopes. */
+    val budgetView: Boolean = false,
     val stars: Int,
     val bonusDays: Set<String>,
     val zone: ZoneId,
@@ -104,5 +111,12 @@ class Snapshot(
         r.opening + r.gaps.sumOf { it.amount }
     }
 
-    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, stars, bonusDays, zone)
+    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, stars, bonusDays, zone)
+
+    /** Envelopes, when they're on. */
+    val book: EnvelopeBook? by lazy { envelopesStart?.let { EnvelopeBook(accounts, entries, allocations, it, zone) } }
+
+    /** "Ksh 1,240 left" for an account's envelope, if it has one. */
+    fun envelopeLeft(accountId: Long, today: java.time.LocalDate): Long? =
+        book?.envelopes(today)?.firstOrNull { it.account.id == accountId }?.let { it.todayLeft?.let { t -> minOf(t, it.left) } ?: it.left }
 }

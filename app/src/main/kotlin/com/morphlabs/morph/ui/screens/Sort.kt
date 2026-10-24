@@ -246,12 +246,15 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
         )
     }
     Gap(8)
+    val today = remember { repo.dayOf(System.currentTimeMillis()) }
     guess.suggestions.forEachIndexed { i, sug ->
         val a = s.byId[sug.accountId] ?: return@forEachIndexed
+        // With envelopes on, show what's left, so the choice also tells you how you're doing.
+        val left = if (out) s.envelopeLeft(a.id, today)?.let { "  ·  ${Money.format(it)} left" } ?: "" else ""
         if (i == 0) Button(onClick = { pick(a) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
-            Text(a.label, fontSize = 18.sp)
+            Text(a.label + left, fontSize = 18.sp)
         } else FilledTonalButton(onClick = { pick(a) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
-            Text(a.label, fontSize = 16.sp)
+            Text(a.label + left, fontSize = 16.sp)
         }
         Gap(8)
     }

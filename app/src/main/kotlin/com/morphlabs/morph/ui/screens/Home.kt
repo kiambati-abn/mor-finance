@@ -2,6 +2,7 @@ package com.morphlabs.morph.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,12 +49,26 @@ import com.morphlabs.morph.ui.components.StatTile
 import com.morphlabs.morph.ui.theme.LocalMorph
 
 @Composable
-fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit) {
+fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         item { Header(d) }
         item { Hero(d) }
+        if ((d.toAssign ?: 0) > 0) item {
+            Gap()
+            MorphCard(onClick = goBudgets) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("✉️", fontSize = 26.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("${Money.format(d.toAssign ?: 0)} to assign", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Give it a job before it disappears.", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Fill →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
         if (s.pending.isNotEmpty()) item {
             Gap()
             MorphCard(onClick = goSort) {
@@ -153,31 +168,48 @@ private fun Header(d: Dashboard) {
 @Composable
 private fun Hero(d: Dashboard) {
     val m = LocalMorph.current
+    var reveal by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val hidden = d.s.budgetView && !reveal
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(m.hero).padding(20.dp)
     ) {
         Text("Spent today", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
         Text(Money.format(d.spentToday), color = m.onHero, fontSize = 36.sp, fontWeight = FontWeight.Black)
         Gap(4)
-        val safe = d.safeToSpend
+        val safe = d.envelopeToday ?: d.safeToSpend
         Text(
             if (safe != null) "Safe to spend today: ${Money.format(safe)}" else "Set budgets to see what's safe to spend",
             color = m.gold, fontWeight = FontWeight.SemiBold,
         )
         Gap(16)
-        Row {
-            Column(Modifier.weight(1f)) {
-                Text("📱 M-Pesa", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
-                Text(Money.format(d.mpesaBalance), color = m.onHero, fontWeight = FontWeight.Bold)
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Net worth", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
-                Text(Money.format(d.netWorth.net), color = m.onHero, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.Bottom) {
+            if (hidden) {
+                Column(Modifier.weight(1f)) {
+                    Text("✉️ In envelopes", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                    Text(Money.format(d.envelopeLeft ?: 0), color = m.onHero, fontWeight = FontWeight.Bold)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("To assign", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                    Text(Money.format(d.toAssign ?: 0), color = m.onHero, fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Column(Modifier.weight(1f)) {
+                    Text("📱 M-Pesa", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                    Text(Money.format(d.mpesaBalance), color = m.onHero, fontWeight = FontWeight.Bold)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Net worth", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
+                    Text(Money.format(d.netWorth.net), color = m.onHero, fontWeight = FontWeight.Bold)
+                }
             }
             Column(Modifier.weight(1f)) {
                 Text("In this month", color = m.onHero.copy(alpha = 0.8f), style = MaterialTheme.typography.labelMedium)
-                Text(Money.format(d.receivedThisMonth), color = m.onHero, fontWeight = FontWeight.Bold)
+                Text(if (hidden) "••••" else Money.format(d.receivedThisMonth), color = m.onHero, fontWeight = FontWeight.Bold)
             }
+            if (d.s.budgetView) Text(
+                if (reveal) "🙈" else "👁", fontSize = 22.sp,
+                modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { reveal = !reveal }.padding(6.dp),
+            )
         }
     }
 }

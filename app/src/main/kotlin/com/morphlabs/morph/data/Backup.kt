@@ -9,7 +9,7 @@ import org.json.JSONObject
 /** Whole-database export/import as one JSON file you can keep on Google Drive or send to a new phone. */
 internal object Backup {
 
-    private val tables = listOf("accounts", "entries", "lines", "budget_moves", "rewards", "meta")
+    private val tables = listOf("accounts", "entries", "lines", "budget_moves", "rewards", "meta", "allocations")
     private const val FORMAT = 1
 
     fun export(db: SQLiteDatabase): String {

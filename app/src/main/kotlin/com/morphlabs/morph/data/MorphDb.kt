@@ -41,6 +41,7 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
         )
         db.execSQL("CREATE TABLE rewards(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, stars INTEGER NOT NULL, reason TEXT NOT NULL)")
         db.execSQL("CREATE TABLE meta(k TEXT PRIMARY KEY, v TEXT)")
+        createAllocations(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -52,10 +53,15 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
         if (oldVersion < 3) {
             db.execSQL("ALTER TABLE entries ADD COLUMN confidence REAL")
         }
+        if (oldVersion < 4) createAllocations(db)
+    }
+
+    private fun createAllocations(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE allocations(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, account_id INTEGER NOT NULL, amount INTEGER NOT NULL)")
     }
 
     companion object {
         const val NAME = "morph.db"
-        const val VERSION = 3
+        const val VERSION = 4
     }
 }

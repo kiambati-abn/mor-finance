@@ -46,5 +46,17 @@ class Dashboard(val s: Snapshot, val today: LocalDate) {
     val levelProgress = Game.levelProgress(stars)
 
     val mpesaBalance = s.balance(s.account(SystemRole.MPESA))
+
+    // Envelopes (when on).
+    val envList = s.book?.envelopes(today)
+    val toAssign: Long? = s.book?.toAssign(today)
+    val envelopeLeft: Long? = envList?.sumOf { maxOf(0L, it.left) }
+    /** What envelopes allow today: daily envelopes' today, plus monthly spending envelopes spread over the days left. */
+    val envelopeToday: Long? = envList?.let { list ->
+        val daysLeft = (java.time.YearMonth.from(today).lengthOfMonth() - today.dayOfMonth + 1).toLong()
+        list.filter { it.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE }.sumOf { e ->
+            if (e.todayLeft != null) maxOf(0L, minOf(e.todayLeft!!, e.left)) else maxOf(0L, e.left) / daysLeft
+        }
+    }
     val netWorth = Balances.netWorth(s.accounts.filter { !it.archived }, s.raw)
 }

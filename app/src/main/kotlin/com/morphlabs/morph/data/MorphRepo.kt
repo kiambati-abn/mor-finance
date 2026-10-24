@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.Uri
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import com.morphlabs.morph.core.budget.Allocation
 import com.morphlabs.morph.core.budget.BudgetMove
 import com.morphlabs.morph.core.defaults.DefaultAccounts
 import com.morphlabs.morph.core.game.Game
@@ -349,7 +350,7 @@ class MorphRepo private constructor(context: Context) {
         val backupUri = meta(KEY_BACKUP_URI)
         db.beginTransaction()
         try {
-            for (t in listOf("lines", "entries", "budget_moves", "rewards", "meta")) db.delete(t, null, null)
+            for (t in listOf("lines", "entries", "budget_moves", "rewards", "meta", "allocations")) db.delete(t, null, null)
             if (!keepAccounts) db.delete("accounts", null, null)
             db.setTransactionSuccessful()
         } finally {
@@ -472,6 +473,60 @@ class MorphRepo private constructor(context: Context) {
 
     fun stars(): Int = snapshot().stars
 
+    // ---- envelopes ----------------------------------------------------------------------------
+
+    /** Turns envelopes on (from now) or off. Turning them off keeps what you assigned, for next time. */
+    fun setEnvelopes(on: Boolean) {
+        if (on && meta(KEY_ENVELOPES_START) == null) setMeta(KEY_ENVELOPES_START, System.currentTimeMillis().toString())
+        if (!on) { setMeta(KEY_ENVELOPES_START, null); setMeta(KEY_BUDGET_VIEW, null) }
+        changed()
+    }
+
+    fun setBudgetView(on: Boolean) {
+        setMeta(KEY_BUDGET_VIEW, if (on) "1" else null)
+        changed()
+    }
+
+    /** Puts [amount] of real money into an envelope (negative takes it back to To assign). */
+    fun assign(accountId: Long, amount: Long) {
+        if (amount == 0L) return
+        db.insert("allocations", null, ContentValues().apply {
+            put("ts", System.currentTimeMillis()); put("account_id", accountId); put("amount", amount)
+        })
+        changed()
+    }
+
+    /** Moves money from one envelope to another. */
+    fun moveBetweenEnvelopes(fromId: Long, toId: Long, amount: Long) {
+        db.beginTransaction()
+        try {
+            val now = System.currentTimeMillis()
+            db.insert("allocations", null, ContentValues().apply { put("ts", now); put("account_id", fromId); put("amount", -amount) })
+            db.insert("allocations", null, ContentValues().apply { put("ts", now); put("account_id", toId); put("amount", amount) })
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        changed()
+    }
+
+    /** "Fill my envelopes": tops each up to its daily/monthly amount, as far as To assign goes. Returns what was assigned. */
+    fun fillEnvelopes(): Long {
+        val book = snapshot().book ?: return 0
+        val plan = book.fillPlan(dayOf(System.currentTimeMillis()))
+        if (plan.isEmpty()) return 0
+        db.beginTransaction()
+        try {
+            val now = System.currentTimeMillis()
+            for ((id, amt) in plan) db.insert("allocations", null, ContentValues().apply { put("ts", now); put("account_id", id); put("amount", amt) })
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        changed()
+        return plan.sumOf { it.second }
+    }
+
     // ---- backup ---------------------------------------------------------------------------
 
     fun exportJson(): String = Backup.export(db)
@@ -590,7 +645,11 @@ class MorphRepo private constructor(context: Context) {
         val bonusDays = db.rawQuery("SELECT reason FROM rewards WHERE reason LIKE ?", arrayOf("$BONUS_PREFIX%")).use { c ->
             buildSet { while (c.moveToNext()) add(c.getString(0).removePrefix(BONUS_PREFIX)) }
         }
-        return Snapshot(accounts, entries, moves, stars, bonusDays, zone)
+        val allocations = db.rawQuery("SELECT id, ts, account_id, amount FROM allocations ORDER BY ts, id", null).use { c ->
+            buildList { while (c.moveToNext()) add(Allocation(c.getLong(0), c.getLong(1), c.getLong(2), c.getLong(3))) }
+        }
+        val envStart = meta(KEY_ENVELOPES_START)?.toLongOrNull()
+        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", stars, bonusDays, zone)
     }
 
     private fun Cursor.str(i: Int): String? = if (isNull(i)) null else getString(i)
@@ -610,6 +669,8 @@ class MorphRepo private constructor(context: Context) {
         private const val BONUS_PREFIX = "inbox-zero:"
         private const val KEY_BACKUP_URI = "backup_uri"
         private const val KEY_AUTOPILOT = "autopilot"
+        private const val KEY_ENVELOPES_START = "envelopes_start"
+        private const val KEY_BUDGET_VIEW = "budget_view"
         private const val KEY_LAST_BACKUP = "last_backup"
         private const val KEY_BACKUP_ERROR = "backup_error"
 

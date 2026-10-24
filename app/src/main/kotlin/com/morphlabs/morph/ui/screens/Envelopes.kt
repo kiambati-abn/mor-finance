@@ -36,6 +36,7 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 @Composable
 fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
     val s = d.s
+    s.book?.let { book -> EnvelopeModeScreen(repo, d, book, goAccounts); return }
     var daily by rememberSaveable { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Envelope?>(null) }
     var moving by remember { mutableStateOf<Envelope?>(null) }
@@ -50,6 +51,8 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
                 Text("Budgets", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 TextButton(onClick = goAccounts) { Text("Set up") }
             }
+            EnvelopesPitch(repo)
+            Gap(8)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !daily, onClick = { daily = false }, label = { Text("This month") })
                 FilterChip(selected = daily, onClick = { daily = true }, label = { Text("Today") })

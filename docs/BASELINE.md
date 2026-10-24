@@ -31,6 +31,15 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 - *Move budget* shifts the plan between envelopes for the current day or month. Real money doesn't move. (This replaces the yellow "transfer" rows from the Notion journal.)
 - *Safe to spend today* = what's left in today's daily envelopes + what's left in each monthly envelope ÷ the days left in the month.
 
+## Envelopes & Budget view (optional, Me → Envelopes)
+
+- Every shilling in your wallets (M-Pesa, Cash, Bank, Airtel Money) is either **in an envelope** or **To assign**.
+- **Money in** → To assign. **Fill my envelopes** tops each envelope up to its amount, fixed costs first. A monthly envelope fills to its monthly amount; a daily one (Food 300/day) fills to 300 × the days left in the month. You can also add, take back, or move money between envelopes by hand.
+- **Spending** on a category takes it out of that envelope. Saving into Chama, or repaying HELB, uses up those envelopes. Spending on something with no envelope comes out of To assign.
+- **Leftovers carry over.** Overspending turns an envelope red; cover it by moving money from another.
+- **Budget view** hides real wallet balances and net worth; you see "In envelopes" and "To assign" instead. Tap 👁 to peek. Sort buttons and notifications show what's left, e.g. "🍻 Friends · Ksh 100 left".
+- Without envelopes, the daily/monthly amounts work as simple limits and targets, as before.
+
 ## Learning (how auto-filing works)
 
 1. **Same counterparty.** Filed the same way at least twice, at least 80% of the time, and most recently → filed automatically.
