@@ -4,6 +4,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.morphlabs.morph.core.model.AccountType
 import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.model.EntrySource
+import com.morphlabs.morph.core.model.EntryStatus
 import com.morphlabs.morph.data.Snapshot
 
 /**
@@ -26,7 +27,9 @@ data class TxFilter(
         if (to != null && e.timestamp >= to) return false
         if (counterpartyKey != null && e.counterpartyKey != counterpartyKey) return false
         if (accountIds.isNotEmpty() && e.lines.none { it.accountId in accountIds }) return false
-        if (spendingOnly && e.lines.none { it.amount > 0 && s.byId[it.accountId]?.type == AccountType.EXPENSE }) return false
+        // Spending includes money out that's still waiting in Sort, so a day's list is never missing anything.
+        if (spendingOnly && e.lines.none { it.amount > 0 && s.byId[it.accountId]?.type == AccountType.EXPENSE } &&
+            !(e.status == EntryStatus.NEEDS_REVIEW && s.outgoing(e))) return false
         return true
     }
 
