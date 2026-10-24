@@ -34,6 +34,13 @@ The script downloads the newest Release and runs `adb install -r`, which keeps y
 To share with friends, send them the `.apk` from the latest Release. On their phone they open it and allow
 "install unknown apps". If Android then blocks the SMS permission, they go to App info → ⋮ → **Allow restricted settings**.
 
+## Updating from a bundle file (no GitHub access for Claude)
+
+1. Download `mor-finance-latest.bundle` into Downloads.
+2. Run `bash ~/morph-update.sh`.
+
+The script loads the changes, pushes them to GitHub, waits for the build, installs the app on the phone plugged in over USB, and deletes the downloaded file.
+
 ## How it's built
 
 | Part | What it is |
