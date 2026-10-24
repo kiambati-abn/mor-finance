@@ -141,6 +141,7 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 - **Accounts:** add, rename, re-emoji, re-type, budget, archive, or correct the balance of any account.
 - **Your own types:** create a name ("Church") and pick which basic group it behaves like (here, Discretionary). The money maths always uses the basic group.
 - **Transactions:** change the category, add a note, split across accounts, delete. You can edit the amount, date, from and to only on entries you added by hand. An M-Pesa entry's amount always comes from the SMS, so balances stay true.
+- **Split works out the rest:** the first account takes the whole amount. Each one you add gets the amount you type, and the first adjusts by itself, so a split always adds up.
 - **Split while sorting:** ✂️ Split in the Sort game and on the "What was it?" notification. Spread one payment over several accounts; it earns the same stars and can be undone.
 - **Sorting:** swipe → to go back and ← to skip or go forward; Undo (bar at the bottom, and on the reward notification); ← Previous to step back through what you just sorted; Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
 - **Start over:** Me → Start over. Either keep accounts and budgets or wipe everything; you then go back to setup and re-import history. A copy is saved first.

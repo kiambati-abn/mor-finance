@@ -321,43 +321,42 @@ private fun EditManualDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: 
 fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: ((com.morphlabs.morph.core.game.Game.Reward) -> Unit)? = null, onDismiss: () -> Unit) {
     val total = s.amount(e)
     val existing = Posting.categorySide(e, s.structural)
+    // The first account always takes "the rest": you type the others, it adjusts by itself.
     val parts = remember {
         androidx.compose.runtime.mutableStateListOf<Pair<Account, String>>().apply {
             for (l in existing) s.byId[l.accountId]?.takeIf { it.pickable }?.let { add(it to Money.format(kotlin.math.abs(l.amount), withCurrency = false).replace(",", "")) }
         }
     }
-    var adding by remember { mutableStateOf(false) }
-    val sum = parts.sumOf { Money.parse(it.second) ?: 0L }
-    val left = total - sum
+    var adding by remember { mutableStateOf(parts.isEmpty()) }
+    val others = parts.drop(1).sumOf { Money.parse(it.second) ?: 0L }
+    val rest = total - others
+    val ok = parts.isNotEmpty() && rest >= 0 && (parts.size == 1 || rest > 0 || others == total)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Split ${Money.format(total)}") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                if (parts.isEmpty()) Text("Add the first account; it takes the whole amount. Add more and type their amounts; the first one adjusts by itself.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 parts.forEachIndexed { i, (a, v) ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
                         Text(a.label, modifier = Modifier.weight(1f))
-                        AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f))
+                        if (i == 0) Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                            Text(Money.format(rest), fontWeight = FontWeight.Bold,
+                                color = if (rest < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                            Text("the rest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f))
                         TextButton(onClick = { parts.removeAt(i) }) { Text("✕") }
                     }
                 }
-                TextButton(onClick = { adding = true }) { Text("+ Add an account") }
-                Text(
-                    when {
-                        left == 0L -> "Adds up ✓"
-                        left > 0 -> "${Money.format(left)} still to place"
-                        else -> "${Money.format(-left)} too much"
-                    },
-                    color = if (left == 0L) com.morphlabs.morph.ui.theme.LocalMorph.current.good else MaterialTheme.colorScheme.error,
-                )
-                if (left > 0 && parts.isNotEmpty()) TextButton(onClick = {
-                    val (a, v) = parts.last(); parts[parts.lastIndex] = a to Money.format((Money.parse(v) ?: 0L) + left, withCurrency = false).replace(",", "")
-                }) { Text("Put the rest on ${parts.last().first.name}") }
+                TextButton(onClick = { adding = true }) { Text(if (parts.isEmpty()) "+ Choose the first account" else "+ Add another account") }
+                if (rest < 0) Text("The others add up to ${Money.format(-rest)} more than the total.", color = MaterialTheme.colorScheme.error)
+                else if (parts.size > 1) Text("Adds up ✓", color = com.morphlabs.morph.ui.theme.LocalMorph.current.good)
             }
         },
         confirmButton = {
-            TextButton(enabled = left == 0L && parts.isNotEmpty(), onClick = {
-                val list = parts.map { it.first.id to (Money.parse(it.second) ?: 0L) }
+            TextButton(enabled = ok, onClick = {
+                val list = parts.mapIndexed { i, (a, v) -> a.id to (if (i == 0) rest else Money.parse(v) ?: 0L) }.filter { it.second > 0 }
                 val pending = e.status == com.morphlabs.morph.core.model.EntryStatus.NEEDS_REVIEW
                 Thread {
                     if (pending) {
@@ -370,8 +369,9 @@ fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: ((com.morphlab
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-    if (adding) AccountPickerDialog("Add", s.accounts, s.outgoing(e), exclude = parts.map { it.first.id }.toSet(), onDismiss = { adding = false }) { a ->
-        parts.add(a to (if (left > 0) Money.format(left, withCurrency = false).replace(",", "") else ""))
+    if (adding) AccountPickerDialog(if (parts.isEmpty()) "First account (takes the rest)" else "Add another", s.accounts, s.outgoing(e),
+        exclude = parts.map { it.first.id }.toSet(), onDismiss = { adding = false }) { a ->
+        parts.add(a to "")
         adding = false
     }
 }
