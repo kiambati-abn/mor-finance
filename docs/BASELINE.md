@@ -38,6 +38,17 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 3. **Habits**: the same kind of payment, a similar amount and a similar time of day → suggestion.
 4. **Starter knowledge** of Kenyan merchants (KPLC, Naivas, Carrefour, HELB, Hustler Fund, Safaricom bundles…) → suggestion. Only very clear cases (KPLC, airtime, HELB) are filed automatically.
 
+Routines (3) are about the same amount at about the same time of day, even to different people: the morning bus fare paid to a new conductor each day. Amounts score highest when identical, less within 10% or 30%. Times within 2 hours count, the closer the better, and weekday/weekend is taken into account.
+
+Every guess has a **confidence** (0–100%): the top choice's share of all the evidence, times how much evidence there is.
+
+**Auto-sort** (Me → Auto-sort):
+- **Off:** only rock-solid matches are filed automatically.
+- **Careful:** also files anything that is at least 75% sure.
+- **Bold:** also files anything that is at least 55% sure. Auto-filed items below 75% are flagged 🤔 in the Sort tab to check.
+
+When you turn Auto-sort on, it runs over everything already waiting.
+
 Your choices always outweigh starter knowledge. Correcting an auto-filed item teaches Morph immediately, and other waiting items from the same counterparty are re-checked.
 
 ## The game
@@ -60,7 +71,7 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 - **Accounts:** add, rename, re-emoji, re-type, budget, archive, or correct the balance of any account.
 - **Your own types:** create a name ("Church") and pick which basic group it behaves like (here, Discretionary). The money maths always uses the basic group.
 - **Transactions:** change the category, add a note, split across accounts, delete. You can edit the amount, date, from and to only on entries you added by hand. An M-Pesa entry's amount always comes from the SMS, so balances stay true.
-- **Sorting:** Undo (bar at the bottom, and on the reward notification), ← Previous to step back through what you just sorted, Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
+- **Sorting:** swipe → to go back and ← to skip or go forward; Undo (bar at the bottom, and on the reward notification); ← Previous to step back through what you just sorted; Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
 - **Start over:** Me → Start over. Either keep accounts and budgets or wipe everything; you then go back to setup and re-import history. A copy is saved first.
 
 ## Backups

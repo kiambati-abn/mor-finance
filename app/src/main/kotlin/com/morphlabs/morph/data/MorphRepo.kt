@@ -75,6 +75,15 @@ class MorphRepo private constructor(context: Context) {
         get() = meta(KEY_THEME) ?: "system"
         set(v) = setMeta(KEY_THEME, v)
 
+    /** Auto-sort: "off" (only rock-solid matches), "careful" or "bold". */
+    var autopilot: String
+        get() = meta(KEY_AUTOPILOT) ?: "off"
+        set(v) = setMeta(KEY_AUTOPILOT, v)
+
+    /** The confidence the current Auto-sort setting needs, or null when it's off. */
+    val autopilotThreshold: Double?
+        get() = when (autopilot) { "bold" -> 0.55; "careful" -> 0.75; else -> null }
+
     var lastSmsDate: Long
         get() = meta(KEY_LAST_SMS)?.toLongOrNull() ?: 0L
         set(v) = setMeta(KEY_LAST_SMS, v.toString())
@@ -129,11 +138,12 @@ class MorphRepo private constructor(context: Context) {
                 status = EntryStatus.CONFIRMED
             } else {
                 val draft = Posting.fromSms(sms, ts, s::role, null, EntryStatus.NEEDS_REVIEW, outgoing)
-                guess = s.guess(draft)
+                guess = s.guess(draft, autopilot = autopilotThreshold)
                 categoryId = guess.autoAccountId
             }
         }
         val entry = Posting.fromSms(sms, ts, s::role, categoryId, status, outgoing)
+            .let { if (it.status == EntryStatus.AUTO) it.copy(confidence = guess?.confidence) else it }
         val saved = insert(entry, dedupe)
         if (batch) snap = s.with(saved) else changed()
         return IngestResult(saved, guess)
@@ -179,10 +189,29 @@ class MorphRepo private constructor(context: Context) {
         val s = snapshot()
         var any = false
         for (p in s.pending.filter { it.counterpartyKey == key }) {
-            val auto = s.guess(p).autoAccountId ?: continue
-            replaceLines(Posting.recategorize(p, auto, EntryStatus.AUTO)); any = true
+            val g = s.guess(p, autopilot = autopilotThreshold)
+            val auto = g.autoAccountId ?: continue
+            replaceLines(Posting.recategorize(p, auto, EntryStatus.AUTO).copy(confidence = g.confidence)); any = true
         }
         if (any) changed()
+    }
+
+    /**
+     * Runs Auto-sort over everything still waiting. Each one is judged on what Morph knew before
+     * this run, so one guess can't snowball into the next. Returns how many it filed.
+     */
+    @Synchronized
+    fun autoSortPending(): Int {
+        val threshold = autopilotThreshold ?: return 0
+        val s = snapshot()
+        var n = 0
+        for (p in s.pending) {
+            val g = s.guess(p, autopilot = threshold)
+            val auto = g.autoAccountId ?: continue
+            replaceLines(Posting.recategorize(p, auto, EntryStatus.AUTO).copy(confidence = g.confidence)); n++
+        }
+        if (n > 0) changed()
+        return n
     }
 
     /** "Yes, Morph got it right": turns an auto-filed entry into a confirmed one. */
@@ -438,7 +467,7 @@ class MorphRepo private constructor(context: Context) {
                 put("ts", e.timestamp); put("description", e.description); put("status", e.status.name); put("source", e.source.name)
                 put("counterparty", e.counterparty); put("cp_key", e.counterpartyKey); put("kind", e.kind?.name); put("code", e.code)
                 put("sms", e.smsBody); put("sms_balance", e.smsBalance); put("category_id", e.categoryId); put("dedupe", dedupe)
-                put("note", e.note)
+                put("note", e.note); put("confidence", e.confidence)
             })
             for (l in e.lines) db.insertOrThrow("lines", null, ContentValues().apply {
                 put("entry_id", id); put("account_id", l.accountId); put("amount", l.amount)
@@ -459,6 +488,7 @@ class MorphRepo private constructor(context: Context) {
             })
             db.update("entries", ContentValues().apply {
                 put("status", e.status.name); put("category_id", e.categoryId); put("description", e.description)
+                put("confidence", if (e.status == EntryStatus.AUTO) e.confidence else null)
             }, "id = ?", arrayOf(e.id.toString()))
             db.setTransactionSuccessful()
         } finally {
@@ -503,7 +533,7 @@ class MorphRepo private constructor(context: Context) {
             while (c.moveToNext()) lines.getOrPut(c.getLong(0)) { mutableListOf() } += Line(c.getLong(1), c.getLong(2))
         }
         val entries = db.rawQuery(
-            "SELECT id, ts, description, status, source, counterparty, cp_key, kind, code, sms, sms_balance, category_id, note FROM entries ORDER BY ts, id", null
+            "SELECT id, ts, description, status, source, counterparty, cp_key, kind, code, sms, sms_balance, category_id, note, confidence FROM entries ORDER BY ts, id", null
         ).use { c ->
             buildList {
                 while (c.moveToNext()) {
@@ -521,6 +551,7 @@ class MorphRepo private constructor(context: Context) {
                             smsBalance = if (c.isNull(10)) null else c.getLong(10),
                             categoryId = if (c.isNull(11)) null else c.getLong(11),
                             note = c.str(12),
+                            confidence = if (c.isNull(13)) null else c.getDouble(13),
                         )
                     )
                 }
@@ -552,6 +583,7 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_LAST_SMS = "last_sms_date"
         private const val BONUS_PREFIX = "inbox-zero:"
         private const val KEY_BACKUP_URI = "backup_uri"
+        private const val KEY_AUTOPILOT = "autopilot"
         private const val KEY_LAST_BACKUP = "last_backup"
         private const val KEY_BACKUP_ERROR = "backup_error"
 

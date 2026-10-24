@@ -24,7 +24,7 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts INTEGER NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL,
                 counterparty TEXT, cp_key TEXT, kind TEXT, code TEXT, sms TEXT, sms_balance INTEGER,
-                category_id INTEGER, dedupe TEXT UNIQUE, note TEXT)"""
+                category_id INTEGER, dedupe TEXT UNIQUE, note TEXT, confidence REAL)"""
         )
         db.execSQL(
             """CREATE TABLE lines(
@@ -49,10 +49,13 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
             db.execSQL("ALTER TABLE entries ADD COLUMN note TEXT")
             db.execSQL("ALTER TABLE accounts ADD COLUMN section TEXT")
         }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE entries ADD COLUMN confidence REAL")
+        }
     }
 
     companion object {
         const val NAME = "morph.db"
-        const val VERSION = 2
+        const val VERSION = 3
     }
 }

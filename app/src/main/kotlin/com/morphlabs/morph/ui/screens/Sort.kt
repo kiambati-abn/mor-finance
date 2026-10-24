@@ -32,7 +32,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -114,7 +117,14 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
                 }) { Text("↩ Undo this one") }
             }
             if (current == null) AllDone(repo, s)
-            else SortPanel(
+            else SwipeArea(
+                onRight = { if (history.isNotEmpty() && (backIndex ?: history.size) > 0) backIndex = (backIndex ?: history.size) - 1 },
+                onLeft = {
+                    val bi = backIndex
+                    if (bi != null) backIndex = (bi + 1).takeIf { it < history.size }
+                    else if (s.pending.size > 1) skipped = (skipped - current.id) + current.id
+                },
+            ) { SortPanel(
                 repo, s, current,
                 onSorted = { reward, label, count ->
                     if (reward.stars > 0) burst = reward.stars to label
@@ -123,7 +133,9 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
                     backIndex = null
                 },
                 onSkip = if (revisiting == null && s.pending.size > 1) ({ skipped = (skipped - current.id) + current.id }) else null,
-            )
+            ) }
+            if (current != null) Text("Swipe → to go back · ← to skip or go forward", style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             Gap(72)
         }
         burst?.let { (stars, label) -> StarBurst(stars, label) { burst = null } }
@@ -149,6 +161,38 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
             }
         }
     }
+}
+
+/** Swipe right to go back, left to skip / go forward. The card follows your finger a little. */
+@Composable
+private fun SwipeArea(onRight: () -> Unit, onLeft: () -> Unit, content: @Composable () -> Unit) {
+    val offset = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    // The gesture handler lives across recompositions; always call the latest callbacks.
+    val right by androidx.compose.runtime.rememberUpdatedState(onRight)
+    val left by androidx.compose.runtime.rememberUpdatedState(onLeft)
+    Column(
+        Modifier
+            .graphicsLayer { translationX = offset.value; alpha = 1f - (kotlin.math.abs(offset.value) / 900f).coerceIn(0f, 0.5f) }
+            .pointerInput(Unit) {
+                val threshold = 140.dp.toPx()
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        val v = offset.value
+                        scope.launch {
+                            if (v > threshold) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); right() }
+                            else if (v < -threshold) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); left() }
+                            offset.animateTo(0f)
+                        }
+                    },
+                    onDragCancel = { scope.launch { offset.animateTo(0f) } },
+                ) { change, dx ->
+                    change.consume()
+                    scope.launch { offset.snapTo(offset.value + dx * 0.6f) }
+                }
+            }
+    ) { content() }
 }
 
 /** One transaction, the best guesses as big buttons, and everything else one tap away. */
@@ -268,11 +312,12 @@ private fun AllDone(repo: MorphRepo, s: Snapshot) {
             )
         }
     }
-    val autos = s.newestFirst.filter { it.status == EntryStatus.AUTO }.take(10)
+    val autos = (s.unsure + s.newestFirst.filter { it.status == EntryStatus.AUTO }).distinctBy { it.id }.take(15)
     if (autos.isNotEmpty()) {
-        SectionTitle("Did Morph get these right?")
+        SectionTitle(if (s.unsure.isNotEmpty()) "🤔 ${s.unsure.size} Morph wasn't sure about" else "Did Morph get these right?")
         Text("Confirm or fix what Morph filed for you. Each one teaches it (+1⭐).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         for (e in autos) {
+            if ((e.confidence ?: 1.0) < Snapshot.UNSURE) Text("🤔 ${((e.confidence ?: 0.0) * 100).toInt()}% sure", style = MaterialTheme.typography.labelMedium, color = com.morphlabs.morph.ui.theme.LocalMorph.current.gold)
             EntryRow(e, s) { open = e }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { scope.launch { withContext(Dispatchers.IO) { repo.confirm(e.id) } } }) { Text("👍 Right") }

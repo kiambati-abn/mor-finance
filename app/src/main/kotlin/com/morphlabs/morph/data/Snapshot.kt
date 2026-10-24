@@ -57,7 +57,11 @@ class Snapshot(
 
     fun hour(e: Entry): Int = Instant.ofEpochMilli(e.timestamp).atZone(zone).hour
 
-    fun query(e: Entry): Query = Query(e.counterpartyKey, e.counterparty, e.kind, outgoing(e), amount(e), hour(e))
+    private fun minute(e: Entry): Int = Instant.ofEpochMilli(e.timestamp).atZone(zone).let { it.hour * 60 + it.minute }
+
+    private fun weekend(e: Entry): Boolean = Instant.ofEpochMilli(e.timestamp).atZone(zone).dayOfWeek.value >= 6
+
+    fun query(e: Entry): Query = Query(e.counterpartyKey, e.counterparty, e.kind, outgoing(e), amount(e), hour(e), minute(e), weekend(e))
 
     /** What the learner studies: every filed transaction you didn't object to. */
     fun observations(): List<Observation> {
@@ -69,13 +73,23 @@ class Snapshot(
                 key = e.counterpartyKey, tokens = Counterparty.tokens(e.counterparty), kind = e.kind,
                 outgoing = outgoing(e), amount = amount(e), hour = hour(e), accountId = e.categoryId!!,
                 timestamp = e.timestamp, weight = if (e.status == EntryStatus.CONFIRMED) 1.0 else 0.6,
+                minute = minute(e), weekend = weekend(e),
             )
         }
     }
 
     fun categorizer(): Categorizer = Categorizer(accounts, observations())
 
-    fun guess(e: Entry, limit: Int = 3): Guess = categorizer().guess(query(e), limit)
+    fun guess(e: Entry, limit: Int = 3, autopilot: Double? = null): Guess = categorizer().guess(query(e), limit, autopilot)
+
+    /** Auto-filed entries Morph wasn't very sure about: worth a quick look. */
+    val unsure: List<Entry> by lazy {
+        entries.filter { it.status == EntryStatus.AUTO && (it.confidence ?: 1.0) < UNSURE }.sortedBy { it.confidence ?: 1.0 }
+    }
+
+    companion object {
+        const val UNSURE = 0.75
+    }
 
     /** The newest SMS that stated a balance. */
     val lastSms: Entry? by lazy { entries.filter { it.smsBalance != null }.maxWithOrNull(compareBy({ it.timestamp }, { it.id })) }

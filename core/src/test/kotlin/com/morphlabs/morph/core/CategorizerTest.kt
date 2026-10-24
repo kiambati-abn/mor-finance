@@ -78,4 +78,48 @@ class CategorizerTest {
         assertEquals(hint("food"), g.suggestions.first().accountId)
         assertNull(g.autoAccountId)
     }
+
+    private fun at(day: Int, hh: Int, mm: Int, amount: Long, who: String, account: Long, kind: TxKind = TxKind.SEND_MONEY) =
+        Observation("person:$who", Counterparty.tokens(who), kind, true, amount, hh, account, day.toLong(), 1.0, hh * 60 + mm, false)
+
+    @Test fun morningBusFareToDifferentPeopleIsARoutine() {
+        // 6 mornings of Ksh 100 around 7:30 AM to a different conductor each time, all filed as Transport.
+        val history = (1..6).map { at(it, 7, 20 + it * 3, 100_00, "CONDUCTOR $it", hint("transport")) } +
+            // ...and evening Ksh 100 sends are something else (friends).
+            (1..3).map { at(it, 20, 0, 100_00, "FRIEND $it", hint("friends")) }
+        val c = Categorizer(TestBook.accounts, history)
+        val morning = c.guess(Query("person:NEW GUY", "NEW GUY", TxKind.SEND_MONEY, true, 100_00, 7, 7 * 60 + 35, false))
+        assertEquals(hint("transport"), morning.suggestions.first().accountId)
+        assert(morning.suggestions.first().reason.contains("7:35 AM")) { morning.suggestions.first().reason }
+        assertNull(morning.autoAccountId) // not without autopilot
+        assert(morning.confidence > 0.6) { "confidence ${morning.confidence}" }
+
+        val withAutopilot = c.guess(Query("person:NEW GUY", "NEW GUY", TxKind.SEND_MONEY, true, 100_00, 7, 7 * 60 + 35, false), autopilot = 0.6)
+        assertEquals(hint("transport"), withAutopilot.autoAccountId)
+
+        val evening = c.guess(Query("person:X", "X", TxKind.SEND_MONEY, true, 100_00, 20, 20 * 60 + 10, false), autopilot = 0.6)
+        assertEquals(hint("friends"), evening.suggestions.first().accountId)
+
+        // A very different amount at the same time isn't the bus.
+        val big = c.guess(Query("person:Y", "Y", TxKind.SEND_MONEY, true, 2_000_00, 7, 7 * 60 + 30, false), autopilot = 0.6)
+        assertNull(big.autoAccountId)
+    }
+
+    @Test fun confidenceIsLowWithLittleOrMixedEvidence() {
+        val c0 = Categorizer(TestBook.accounts, emptyList())
+        val hotel = c0.guess(query(Fixtures.TILL_HOTEL), autopilot = 0.6)
+        assert(hotel.confidence < 0.6) { "starter knowledge alone shouldn't be enough: ${hotel.confidence}" }
+        assertNull(hotel.autoAccountId)
+
+        val mixed = (1..3).map { at(it, 8, 0, 50_00, "P$it", hint("transport")) } + (4..6).map { at(it, 8, 0, 50_00, "P$it", hint("food")) }
+        val g = Categorizer(TestBook.accounts, mixed).guess(Query("person:Z", "Z", TxKind.SEND_MONEY, true, 50_00, 8, 480, false), autopilot = 0.6)
+        assertNull(g.autoAccountId)
+        assert(g.confidence < 0.6) { "mixed evidence: ${g.confidence}" }
+    }
+
+    @Test fun clockAndMidnightWrap() {
+        assertEquals(10, Categorizer.minuteGap(5, 1435))
+        assertEquals("7:35 AM", Categorizer.clock(455))
+        assertEquals("12:05 AM", Categorizer.clock(5))
+    }
 }

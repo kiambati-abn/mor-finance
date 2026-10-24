@@ -151,6 +151,35 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                 }
             }
         }
+        item {
+            SectionTitle("Auto-sort")
+            MorphCard {
+                Column(Modifier.padding(16.dp)) {
+                    val mode = repo.autopilot
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((k, l) in listOf("off" to "Off", "careful" to "Careful", "bold" to "Bold")) {
+                            FilterChip(selected = mode == k, onClick = {
+                                repo.autopilot = k
+                                if (k != "off") scope.launch {
+                                    val n = withContext(Dispatchers.IO) { repo.autoSortPending() }
+                                    if (n > 0) Toast.makeText(ctx, "Auto-sorted $n waiting transactions", Toast.LENGTH_SHORT).show()
+                                }
+                            }, label = { Text(l) })
+                        }
+                    }
+                    Gap(6)
+                    Text(
+                        when (mode) {
+                            "careful" -> "Morph files on its own when it's very sure: the same place again, or a strong routine (same amount, same time of day). Everything else waits for you."
+                            "bold" -> "Morph files whatever it's fairly sure about, and flags the less certain ones with 🤔 so you can check them in the Sort tab."
+                            else -> "Morph only files the rock-solid ones (the same person or till filed the same way twice) and asks about the rest."
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (s.unsure.isNotEmpty()) Text("🤔 ${s.unsure.size} auto-sorted to check in the Sort tab", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
         if (d.insights.isNotEmpty()) item { SectionTitle("What your money says", action = "Patterns", onAction = goPatterns) }
         items(d.insights, key = { it.id }) { i -> InsightCard(i); Gap(8) }
         item {

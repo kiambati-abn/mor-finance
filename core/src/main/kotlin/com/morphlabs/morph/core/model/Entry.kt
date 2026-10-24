@@ -39,6 +39,8 @@ data class Entry(
     val smsBalance: Long? = null,
     /** Your own words about it ("lunch with Ann"). */
     val note: String? = null,
+    /** How sure Morph was when it filed this on its own (0..1); null when you chose. */
+    val confidence: Double? = null,
 ) {
     init {
         require(lines.sumOf { it.amount } == 0L) { "Entry '$description' is unbalanced: $lines" }
