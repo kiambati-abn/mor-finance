@@ -194,6 +194,19 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             }
         }
         item {
+            SectionTitle("Budget alerts")
+            MorphCard {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("🔔 Tell me when a budget is almost out", fontWeight = FontWeight.SemiBold)
+                        Text("Once when it reaches 🔴 10% left and once if it goes ⛔ over, per day or month. Bars turn 🟡 gold at 25% left and 🔴 red at 10%.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    androidx.compose.material3.Switch(checked = repo.budgetAlerts, onCheckedChange = { repo.budgetAlerts = it })
+                }
+            }
+        }
+        item {
             SectionTitle("Auto-sort")
             MorphCard {
                 Column(Modifier.padding(16.dp)) {

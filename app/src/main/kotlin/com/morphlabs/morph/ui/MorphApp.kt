@@ -91,6 +91,7 @@ private fun MainBody(
     tab: Tab, setTab: (Tab) -> Unit, page: Page?, setPage: (Page?) -> Unit,
     listFilter: TxFilter?, setList: (TxFilter?) -> Unit, adding: Boolean, setAdding: (Boolean) -> Unit,
 ) {
+    var budgetsFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("all") }
     if (listFilter != null) { TransactionsScreen(repo, s, onBack = { setList(null) }, filter = listFilter); return }
     when (page) {
         Page.ACCOUNTS -> { AccountsScreen(repo, s, onBack = { setPage(null) }); return }
@@ -122,9 +123,10 @@ private fun MainBody(
         Box(Modifier.padding(pad)) {
             when (tab) {
                 Tab.HOME -> HomeScreen(repo, dash, goSort = { setTab(Tab.SORT) }, goMe = { setTab(Tab.ME) }, goAll = { setPage(Page.TRANSACTIONS) },
-                    goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { setTab(Tab.ENVELOPES) })
+                    goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { budgetsFilter = "all"; setTab(Tab.ENVELOPES) },
+                    goLowBudgets = { budgetsFilter = "low"; setTab(Tab.ENVELOPES) })
                 Tab.SORT -> SortScreen(repo, s)
-                Tab.ENVELOPES -> EnvelopesScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) })
+                Tab.ENVELOPES -> androidx.compose.runtime.key(budgetsFilter) { EnvelopesScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, startFilter = budgetsFilter) }
                 Tab.ME -> MeScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, goAll = { setPage(Page.TRANSACTIONS) }, goPatterns = { setPage(Page.PATTERNS) })
             }
         }

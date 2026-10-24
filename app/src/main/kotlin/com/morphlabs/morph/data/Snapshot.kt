@@ -142,7 +142,40 @@ class Snapshot(
     /** Envelopes, when they're on. */
     val book: EnvelopeBook? by lazy { envelopesStart?.let { EnvelopeBook(accounts, entries, allocations, it, zone) } }
 
+    /**
+     * How an account's spending budget is doing right now (envelope, or plain budget), or null when
+     * it has none. Savings and debt targets aren't warnings, so only spending accounts get one.
+     */
+    fun health(accountId: Long, today: java.time.LocalDate): com.morphlabs.morph.core.budget.Health? {
+        val a = byId[accountId] ?: return null
+        if (a.type != com.morphlabs.morph.core.model.AccountType.EXPENSE) return null
+        val month = java.time.YearMonth.from(today).toString()
+        book?.let { _ ->
+            val e = envelopesOn(today).firstOrNull { it.account.id == accountId } ?: return null
+            return if (e.todayLeft != null) com.morphlabs.morph.core.budget.Health(accountId, minOf(e.todayLeft!!, e.left), a.budget, today.toString())
+            else com.morphlabs.morph.core.budget.Health(accountId, e.left, maxOf(e.assigned, e.target), month)
+        }
+        val e = budgetsOn(today).firstOrNull { it.account.id == accountId && it.isLimit } ?: return null
+        return com.morphlabs.morph.core.budget.Health(accountId, e.left, e.available, if (e.period == com.morphlabs.morph.core.model.BudgetPeriod.DAILY) today.toString() else month)
+    }
+
+    // Worked out once per day per snapshot: health() is asked for every account on every screen.
+    private val envelopeCache = HashMap<java.time.LocalDate, List<EnvelopeBook.Envelope>>()
+    private val budgetCache = HashMap<java.time.LocalDate, List<com.morphlabs.morph.core.budget.Envelope>>()
+
+    @Synchronized
+    fun envelopesOn(today: java.time.LocalDate): List<EnvelopeBook.Envelope> =
+        envelopeCache.getOrPut(today) { book?.envelopes(today).orEmpty() }
+
+    @Synchronized
+    fun budgetsOn(today: java.time.LocalDate): List<com.morphlabs.morph.core.budget.Envelope> =
+        budgetCache.getOrPut(today) { com.morphlabs.morph.core.budget.Budgets(zone).envelopes(accounts, entries, moves, today) }
+
+    /** Every spending budget that's getting low, almost out or over. */
+    fun warnings(today: java.time.LocalDate): List<com.morphlabs.morph.core.budget.Health> =
+        accounts.mapNotNull { health(it.id, today) }.filter { it.level.warns }.sortedBy { it.level.ordinal * -1 }
+
     /** "Ksh 1,240 left" for an account's envelope, if it has one. */
     fun envelopeLeft(accountId: Long, today: java.time.LocalDate): Long? =
-        book?.envelopes(today)?.firstOrNull { it.account.id == accountId }?.let { it.todayLeft?.let { t -> minOf(t, it.left) } ?: it.left }
+        envelopesOn(today).firstOrNull { it.account.id == accountId }?.let { it.todayLeft?.let { t -> minOf(t, it.left) } ?: it.left }
 }

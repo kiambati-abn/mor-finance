@@ -57,7 +57,7 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit) {
+fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit, goLowBudgets: () -> Unit = goBudgets) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
     val openList = LocalOpenList.current
@@ -81,6 +81,24 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         item { Header(d, refreshing) { refresh() } }
         item { Hero(d) { days("Spent today", 0) } }
+        val warnings = s.warnings(d.today)
+        if (warnings.isNotEmpty()) item {
+            Gap()
+            MorphCard(onClick = goLowBudgets) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(warnings.first().level.icon, fontSize = 24.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("${warnings.size} budget${if (warnings.size > 1) "s" else ""} running low", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            warnings.take(3).joinToString(" · ") { w -> "${s.byId[w.accountId]?.label} ${if (w.left < 0) "over ${Money.format(-w.left)}" else "${Money.format(w.left)} left"}" },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Text("See →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
         if ((d.toAssign ?: 0) > 0) item {
             Gap()
             MorphCard(onClick = goBudgets) {

@@ -27,6 +27,7 @@ object Notifier {
     const val CH_SORT = "sort"
     const val CH_AUTO = "auto"
     const val CH_REWARD = "reward"
+    const val CH_BUDGET = "budget"
 
     const val EXTRA_ENTRY = "entry_id"
     const val EXTRA_ACCOUNT = "account_id"
@@ -47,6 +48,9 @@ object Notifier {
         })
         nm.createNotificationChannel(NotificationChannel(CH_REWARD, "Stars", NotificationManager.IMPORTANCE_LOW).apply {
             description = "Your reward after sorting"
+        })
+        nm.createNotificationChannel(NotificationChannel(CH_BUDGET, "Budget alerts", NotificationManager.IMPORTANCE_DEFAULT).apply {
+            description = "When a budget is almost out or goes over"
         })
     }
 
@@ -158,6 +162,31 @@ object Notifier {
     fun showAgain(context: Context, entryId: Long) {
         val e = MorphRepo.get(context).snapshot().entries.firstOrNull { it.id == entryId } ?: return
         if (e.status == EntryStatus.NEEDS_REVIEW) showSort(context, e) else cancel(context, entryId)
+    }
+
+    /** "🔴 Friends is almost out: Ksh 100 left (95% used)". */
+    fun budgetAlert(context: Context, a: com.morphlabs.morph.core.model.Account, h: com.morphlabs.morph.core.budget.Health) {
+        if (!canNotify(context)) return
+        val over = h.level == com.morphlabs.morph.core.budget.Level.OVER
+        val title = if (over) "⛔ ${a.label} is over budget" else "🔴 ${a.label} is almost out"
+        val text = if (over) "Over by ${Money.format(-h.left)}. Move money from another budget to cover it."
+        else "${Money.format(h.left)} left (${(h.usedShare * 100).toInt()}% used). Spend carefully."
+        val open = PendingIntent.getActivity(
+            context, 5000 + a.id.toInt(), Intent(context, com.morphlabs.morph.MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val n = Notification.Builder(context, CH_BUDGET)
+            .setSmallIcon(R.drawable.ic_stat_morph)
+            .setColor(if (over) 0xFFD64545.toInt() else GOLD)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        try {
+            context.getSystemService(NotificationManager::class.java)?.notify(500000 + a.id.toInt(), n)
+        } catch (_: SecurityException) {
+        }
     }
 
     fun cancel(context: Context, entryId: Long) {

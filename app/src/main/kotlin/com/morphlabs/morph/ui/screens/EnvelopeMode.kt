@@ -54,15 +54,15 @@ import kotlinx.coroutines.withContext
 /** Envelopes: every shilling has a job, and each envelope shows what's left. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAccounts: () -> Unit) {
+fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAccounts: () -> Unit, startFilter: String = "all") {
     val s = d.s
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val list = remember(s) { book.envelopes(d.today) }
     val toAssign = remember(s) { book.toAssign(d.today) }
     var open by remember { mutableStateOf<EnvelopeBook.Envelope?>(null) }
-    val find = remember { FindState() }
-    val shown = list.filter { e -> find.matches(e.account, e.overspent || (e.target > 0 && e.progressLeft < 0.2f)) }
+    val find = remember { FindState().also { it.filter = startFilter } }
+    val shown = list.filter { e -> find.matches(e.account, s.health(e.account.id, d.today)?.level?.warns == true || e.overspent) }
     fun spendable(e: EnvelopeBook.Envelope) = if (e.todayLeft != null) minOf(e.todayLeft!!, e.left) else e.left
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -119,6 +119,11 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
 private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = null, onClick: () -> Unit) {
     val m = LocalMorph.current
     val daily = e.account.period == BudgetPeriod.DAILY
+    val level = if (e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE) {
+        if (daily) com.morphlabs.morph.core.budget.Health.level(minOf(e.todayLeft ?: e.left, e.left), e.account.budget)
+        else com.morphlabs.morph.core.budget.Health.level(e.left, maxOf(e.assigned, e.target))
+    } else com.morphlabs.morph.core.budget.Level.OK
+    val tint = com.morphlabs.morph.ui.components.levelColor(level)
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onClick) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -127,17 +132,18 @@ private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = n
                     Text(
                         Money.format(if (daily) minOf(e.todayLeft ?: e.left, e.left) else e.left),
                         fontWeight = FontWeight.Black, fontSize = 18.sp,
-                        color = if (e.overspent || (daily && (e.todayLeft ?: 0) < 0)) m.bad else MaterialTheme.colorScheme.onSurface,
+                        color = if (level.warns) tint else MaterialTheme.colorScheme.onSurface,
                     )
                     Text(if (daily) "left today" else "left", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            com.morphlabs.morph.ui.components.LevelPill(level)
             afford?.let { (left, amt) -> AffordLine(left, amt) }
             Gap(6)
             LinearProgressIndicator(
                 progress = { e.progressLeft },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = when { e.overspent -> m.bad; e.progressLeft < 0.15f -> m.gold; else -> MaterialTheme.colorScheme.primary },
+                color = tint,
                 trackColor = m.track, drawStopIndicator = {},
             )
             Gap(4)

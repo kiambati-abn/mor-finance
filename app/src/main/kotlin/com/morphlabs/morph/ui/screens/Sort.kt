@@ -298,7 +298,12 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
     guess.suggestions.forEachIndexed { i, sug ->
         val a = s.byId[sug.accountId] ?: return@forEachIndexed
         // With envelopes on, show what's left, so the choice also tells you how you're doing.
-        val left = if (out) s.envelopeLeft(a.id, today)?.let { "  ·  ${Money.format(it)} left" } ?: "" else ""
+        val h = if (out) s.health(a.id, today) else null
+        val left = when {
+            h != null -> "  ·  ${if (h.level.warns) "⚠️ " else ""}${Money.format(h.left)} left"
+            out -> s.envelopeLeft(a.id, today)?.let { "  ·  ${Money.format(it)} left" } ?: ""
+            else -> ""
+        }
         if (i == 0) Button(onClick = { pick(a) }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(16.dp)) {
             Text(a.label + left, fontSize = 18.sp)
         } else FilledTonalButton(onClick = { pick(a) }, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {

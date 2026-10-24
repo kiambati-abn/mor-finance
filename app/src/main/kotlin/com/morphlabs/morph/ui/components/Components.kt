@@ -83,9 +83,8 @@ fun StatTile(label: String, value: Long, modifier: Modifier = Modifier, onClick:
 fun EnvelopeBar(e: Envelope, modifier: Modifier = Modifier) {
     val m = LocalMorph.current
     val color = when {
-        e.over -> m.bad
         e.reached -> m.good
-        e.isLimit && e.progress > 0.85f -> m.gold
+        e.isLimit -> levelColor(com.morphlabs.morph.core.budget.Health.level(e.left, e.available))
         else -> MaterialTheme.colorScheme.primary
     }
     LinearProgressIndicator(
@@ -181,3 +180,21 @@ fun Pill(text: String, modifier: Modifier = Modifier, container: Color = Materia
 fun Gap(h: Int = 12) = Spacer(Modifier.height(h.dp))
 
 val RowGap = Arrangement.spacedBy(10.dp)
+
+/** The traffic-light colour for a budget level: brand purple, gold, then red. */
+@Composable
+fun levelColor(level: com.morphlabs.morph.core.budget.Level): Color = when (level) {
+    com.morphlabs.morph.core.budget.Level.OK -> MaterialTheme.colorScheme.primary
+    com.morphlabs.morph.core.budget.Level.LOW -> LocalMorph.current.gold
+    else -> LocalMorph.current.bad
+}
+
+/** "🟡 Getting low" style label; never colour alone. Shows nothing when on track. */
+@Composable
+fun LevelPill(level: com.morphlabs.morph.core.budget.Level, modifier: Modifier = Modifier) {
+    if (!level.warns) return
+    Text(
+        "${level.icon} ${level.label}", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
+        color = levelColor(level), modifier = modifier,
+    )
+}

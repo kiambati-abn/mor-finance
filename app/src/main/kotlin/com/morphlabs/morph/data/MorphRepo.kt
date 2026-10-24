@@ -135,7 +135,10 @@ class MorphRepo private constructor(context: Context) {
         val entry = Posting.fromSms(sms, ts, s::role, categoryId, status, outgoing)
             .let { if (it.status == EntryStatus.AUTO) it.copy(confidence = guess?.confidence) else it }
         val saved = insert(entry, dedupe)
-        if (batch) snap = s.with(saved) else { changed(); reconcileMpesa() }
+        if (batch) snap = s.with(saved) else {
+            changed(); reconcileMpesa()
+            if (saved.status == EntryStatus.AUTO) saved.categoryId?.let { alertBudgets(listOf(it)) }
+        }
         return IngestResult(saved, guess)
     }
 
@@ -230,6 +233,7 @@ class MorphRepo private constructor(context: Context) {
         if (reward.stars > 0) rewardIds += addReward(reward.stars, reward.reasons.joinToString(" · "), now)
         remember(entryId, undo[entryId]?.takeIf { recentlySorted }?.before ?: e, rewardIds, now)
         changed()
+        alertBudgets(listOf(accountId))
         if (e.counterpartyKey != null) refilePending(e.counterpartyKey!!)
         return reward
     }
@@ -401,6 +405,7 @@ class MorphRepo private constructor(context: Context) {
         val main = parts.filter { it.second > 0 }.maxByOrNull { it.second }?.first ?: return Game.Reward(0, emptyList())
         val reward = categorize(entryId, main)
         split(entryId, parts)
+        alertBudgets(parts.map { it.first })
         return reward
     }
 
@@ -485,6 +490,7 @@ class MorphRepo private constructor(context: Context) {
         insert(Posting.manual(timestamp, description, amount, fromId, toId), null)
         addReward(1, "Recorded by hand")
         changed()
+        alertBudgets(listOf(toId))
     }
 
     fun deleteEntry(id: Long) {
@@ -557,6 +563,33 @@ class MorphRepo private constructor(context: Context) {
 
     fun stars(): Int = snapshot().stars
 
+    // ---- budget alerts ----------------------------------------------------------------------
+
+    /** Budget alerts on/off (on by default). */
+    var budgetAlerts: Boolean
+        get() = meta(KEY_BUDGET_ALERTS) != "off"
+        set(v) = setMeta(KEY_BUDGET_ALERTS, if (v) null else "off")
+
+    /**
+     * After spending on [accountIds]: notify once per account, per day/month and per level, when a
+     * budget becomes "Almost out" and when it goes over. Never nags about the same thing twice.
+     */
+    private fun alertBudgets(accountIds: Collection<Long>) {
+        if (!budgetAlerts) return
+        val s = snapshot()
+        val today = dayOf(System.currentTimeMillis())
+        for (id in accountIds.toSet()) {
+            val h = s.health(id, today) ?: continue
+            val level = h.level
+            if (level != com.morphlabs.morph.core.budget.Level.CRITICAL && level != com.morphlabs.morph.core.budget.Level.OVER) continue
+            val key = "alert:$id:${h.periodKey}:${level.name}"
+            if (meta(key) != null) continue
+            setMeta(key, "1")
+            val a = s.byId[id] ?: continue
+            com.morphlabs.morph.notify.Notifier.budgetAlert(appContext, a, h)
+        }
+    }
+
     // ---- cash ---------------------------------------------------------------------------------
 
     /**
@@ -580,6 +613,7 @@ class MorphRepo private constructor(context: Context) {
         val n = parts.count { it.second > 0 }
         if (n > 0) addReward(n, "Spread cash")
         changed()
+        alertBudgets(parts.map { it.first })
     }
 
     /** "Keep it as cash": stop asking about this withdrawal. */
@@ -790,6 +824,7 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_AUTOPILOT = "autopilot"
         private const val KEY_BACKUP_EVERY = "backup_every_days"
         private const val KEY_RELEARN = "relearn_at"
+        private const val KEY_BUDGET_ALERTS = "budget_alerts"
         private const val KEY_RELEARN_RESULT = "relearn_result"
         private const val KEY_ENVELOPES_START = "envelopes_start"
         private const val KEY_BUDGET_VIEW = "budget_view"

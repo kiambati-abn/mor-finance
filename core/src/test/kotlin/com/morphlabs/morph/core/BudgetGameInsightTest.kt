@@ -95,4 +95,12 @@ class BudgetGameInsightTest {
         assertEquals("${Money.format(16 * 7_00)} in M-Pesa fees this month", insights.getValue("fees").title)
         assert(insights.containsKey("runway"))
     }
+
+    @Test fun trafficLight() {
+        val l = com.morphlabs.morph.core.budget.Health.Companion
+        assertEquals(com.morphlabs.morph.core.budget.Level.OK, l.level(1_000_00, 2_000_00))
+        assertEquals(com.morphlabs.morph.core.budget.Level.LOW, l.level(500_00, 2_000_00))
+        assertEquals(com.morphlabs.morph.core.budget.Level.CRITICAL, l.level(100_00, 2_000_00))
+        assertEquals(com.morphlabs.morph.core.budget.Level.OVER, l.level(-1, 2_000_00))
+    }
 }

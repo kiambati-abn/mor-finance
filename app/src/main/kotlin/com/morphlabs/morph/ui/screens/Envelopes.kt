@@ -35,16 +35,16 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
+fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, startFilter: String = "all") {
     val s = d.s
-    s.book?.let { book -> EnvelopeModeScreen(repo, d, book, goAccounts); return }
+    s.book?.let { book -> EnvelopeModeScreen(repo, d, book, goAccounts, startFilter); return }
     var daily by rememberSaveable { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Envelope?>(null) }
     var moving by remember { mutableStateOf<Envelope?>(null) }
     val period = if (daily) BudgetPeriod.DAILY else BudgetPeriod.MONTHLY
-    val find = remember { FindState() }
+    val find = remember { FindState().also { it.filter = startFilter } }
     val all = d.envelopes.filter { it.period == period }
-    val list = all.filter { e -> find.matches(e.account, e.over || (e.isLimit && e.progress > 0.8f)) }
+    val list = all.filter { e -> find.matches(e.account, e.isLimit && com.morphlabs.morph.core.budget.Health.level(e.left, e.available).warns) }
         .let { l -> find.affordCents?.let { amt -> l.sortedByDescending { it.left - amt } } ?: l }
     val limits = list.filter { it.isLimit }
     val targets = list.filter { !it.isLimit }
@@ -109,6 +109,7 @@ private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?, 
                 Text(e.account.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                 Text("${Money.format(e.used, withCurrency = false)} / ${Money.format(e.available, withCurrency = false)}", style = MaterialTheme.typography.bodyMedium)
             }
+            if (e.isLimit) com.morphlabs.morph.ui.components.LevelPill(com.morphlabs.morph.core.budget.Health.level(e.left, e.available))
             if (e.isLimit) AffordLine(e.left, afford)
             Gap(8)
             EnvelopeBar(e)

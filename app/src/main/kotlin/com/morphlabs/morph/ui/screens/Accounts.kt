@@ -65,6 +65,9 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
                                     "${Money.format(a.budget)} ${if (a.period == BudgetPeriod.DAILY) "a day" else "a month"}",
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                s.health(a.id, java.time.LocalDate.now(s.zone))?.let { h ->
+                                    com.morphlabs.morph.ui.components.LevelPill(h.level)
+                                }
                             }
                             Text(
                                 if (s.budgetView && a.group == AccountGroup.WALLET) "••••" else Money.format(s.balance(a)),

@@ -54,6 +54,19 @@ Every amount opens the list of its transactions. The list shows its total, and e
 - **Patterns → Spending by month:** tap a month to see what changed against your usual month, e.g. "▲ 🎉 Fun +Ksh 3,000 (mostly CLUB) ▼ 🚌 Transport −Ksh 800".
 - Reasons are worked out from what you've sorted; you never type them. Notes you add to transactions show up there.
 
+## Budget traffic lights & alerts
+
+| Level | When | Shown as |
+|---|---|---|
+| 🟢 On track | more than 25% left | purple bar |
+| 🟡 Getting low | 25% or less left | gold bar + "Getting low" |
+| 🔴 Almost out | 10% or less left | red bar + "Almost out" |
+| ⛔ Over | below zero | red bar + "Over" |
+
+- Applies to spending budgets and envelopes (daily ones use what's left today). Savings and debt targets don't warn.
+- Shown on budget/envelope cards, Accounts, Sort buttons ("⚠️ Ksh 100 left") and a Home card ("2 budgets running low", which opens Budgets filtered to Running low).
+- **Alerts:** a notification once when a budget reaches 🔴 Almost out and once if it goes ⛔ Over, per day or month. Switch off under Me → Budget alerts.
+
 ## Finding and checking budgets
 
 - **Budgets tab:** a search box and type filters (All · Spending · Savings & debts · Running low) stay pinned at the top while you scroll.
