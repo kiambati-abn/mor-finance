@@ -200,6 +200,7 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     var splitting by remember { mutableStateOf(false) }
+    var cash by remember { mutableStateOf(false) }
     var note by remember { mutableStateOf(e.note ?: "") }
     val cats = s.categories(e)
     fun saveNote() { if (note.trim() != (e.note ?: "")) { val n = note; Thread { repo.setNote(e.id, n) }.start() } }
@@ -219,6 +220,7 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
                 OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) OutlinedButton(onClick = { cash = true }) { Text("💵 Spread this cash") }
                     if (e.source == EntrySource.MANUAL && e.kind == null) OutlinedButton(onClick = { editing = true }) { Text("Edit") }
                     if (e.source != EntrySource.SYSTEM) OutlinedButton(onClick = { splitting = true }) { Text("Split") }
                 }
@@ -256,6 +258,7 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
     }
     if (editing) EditManualDialog(repo, s, e, onDismiss = { editing = false; onDismiss() })
     if (splitting) SplitDialog(repo, s, e, onDismiss = { splitting = false; onDismiss() })
+    if (cash) CashSpreadDialog(repo, s, e, s.cashToSpread.firstOrNull { it.first.id == e.id }?.second ?: s.amount(e)) { cash = false; onDismiss() }
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Delete this transaction?") },

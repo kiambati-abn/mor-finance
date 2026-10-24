@@ -31,6 +31,19 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 - *Move budget* shifts the plan between envelopes for the current day or month. Real money doesn't move. (This replaces the yellow "transfer" rows from the Notion journal.)
 - *Safe to spend today* = what's left in today's daily envelopes + what's left in each monthly envelope ÷ the days left in the month.
 
+## Spending chart & reasons
+
+- **Home → Last 14 days:** one bar per day, today highlighted. Tap a bar to see that day and **why**, e.g. "🏠 Rent Ksh 5,000 (LANDLORD) · 🍔 Food Ksh 300". Unusually big days get a gold dot: 1.5× your usual day, and at least Ksh 500 more.
+- **Patterns → Spending by month:** tap a month to see what changed against your usual month, e.g. "▲ 🎉 Fun +Ksh 3,000 (mostly CLUB) ▼ 🚌 Transport −Ksh 800".
+- Reasons are worked out from what you've sorted; you never type them. Notes you add to transactions show up there.
+
+## Cash
+
+- A withdrawal moves money from M-Pesa to Cash; the fee goes to Withdrawal charges.
+- Morph then asks: **"💵 Ksh 2,000 cash. What's it for?"** You can answer from the notification, from the Sort tab, or from the withdrawal's details.
+- Tap your usual cash categories (Food, Transport…), type the amounts, and Save. Each part becomes a cash spend (+1⭐ each); anything you don't spread stays in Cash. "Keep as cash" stops the question.
+- Parsed wording: "Withdraw Ksh… from AGENT" and "You have withdrawn Ksh… from AGENT".
+
 ## Envelopes & Budget view (optional, Me → Envelopes)
 
 - Every shilling in your wallets (M-Pesa, Cash, Bank, Airtel Money) is either **in an envelope** or **To assign**.

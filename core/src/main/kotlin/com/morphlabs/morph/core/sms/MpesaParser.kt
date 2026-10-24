@@ -33,7 +33,8 @@ object MpesaParser {
     private val send = Regex("""$ksh\s+sent\s+to\s+(.+?)\s+on\s+\d""", RegexOption.IGNORE_CASE)
     private val buyGoods = Regex("""$ksh\s+paid\s+to\s+(.+?)\.?\s+on\s+\d""", RegexOption.IGNORE_CASE)
     private val received = Regex("""You\s+have\s+received\s+$ksh\s+from\s+(.+?)\s+on\s+\d""", RegexOption.IGNORE_CASE)
-    private val withdraw = Regex("""Withdraw\s+$ksh\s+from\s+(.+?)\s+New\s+M-PESA""", RegexOption.IGNORE_CASE)
+    // "Withdraw Ksh1,000.00 from 123456 - AGENT" and "You have withdrawn Ksh1,000.00 from AGENT"
+    private val withdraw = Regex("""(?:You\s+have\s+)?Withdrawn?\s+$ksh\s+(?:from|at)\s+(.+?)\.?\s+(?:on\s+\d|New\s+M-PESA)""", RegexOption.IGNORE_CASE)
     private val deposit = Regex("""Give\s+$ksh\s+cash\s+to\s+(.+?)\s+New\s+M-PESA""", RegexOption.IGNORE_CASE)
     private val airtime = Regex("""You\s+bought\s+$ksh\s+of\s+airtime(?:\s+for\s+(\d+))?""", RegexOption.IGNORE_CASE)
     private val toMshwari = Regex("""$ksh\s+transferred\s+to\s+M-?Shwari""", RegexOption.IGNORE_CASE)

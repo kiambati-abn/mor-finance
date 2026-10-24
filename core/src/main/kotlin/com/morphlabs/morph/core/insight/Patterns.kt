@@ -191,6 +191,55 @@ class Patterns(private val accounts: List<Account>, private val entries: List<En
         return AfterIncome(big.size, big.sumOf { it.second }, spent)
     }
 
+    data class Driver(val account: Account, val amount: Long, val change: Long, val biggest: Entry?)
+
+    data class DayBar(val date: LocalDate, val total: Long, val spike: Boolean, val drivers: List<Driver>)
+
+    /**
+     * Spending per day for the last [days] days, oldest first. A day is a spike when it's well
+     * above your usual day (1.5× the median of recent days with spending, and Ksh 500+ more).
+     * [DayBar.drivers] say why: the categories that made up the day, biggest first.
+     */
+    fun daily(today: LocalDate, days: Int = 14): List<DayBar> {
+        val history = (0 until 60).map { i -> today.minusDays(i.toLong()) }.map { d -> real.filter { day(it.timestamp) == d }.sumOf { spend(it) } }
+        val active = history.filter { it > 0 }.sorted()
+        val median = if (active.isEmpty()) 0L else active[active.size / 2]
+        return (days - 1 downTo 0).map { back ->
+            val d = today.minusDays(back.toLong())
+            val list = real.filter { day(it.timestamp) == d }
+            val total = list.sumOf { spend(it) }
+            DayBar(d, total, median > 0 && total >= median * 3 / 2 && total - median >= 500 * 100, drivers(list, emptyList(), 1.0))
+        }
+    }
+
+    /**
+     * Why a month differs from your usual month (the average of the 3 before it): the categories
+     * that moved most, each with the single transaction that contributed most.
+     */
+    fun whyMonth(month: YearMonth, today: LocalDate): List<Driver> {
+        val endDay = if (month == YearMonth.from(today)) today else month.atEndOfMonth()
+        val share = endDay.dayOfMonth.toDouble() / month.lengthOfMonth()
+        val now = real.filter { it.timestamp in start(month.atDay(1)) until start(endDay.plusDays(1)) }
+        val before = real.filter { it.timestamp in start(month.minusMonths(3).atDay(1)) until start(month.atDay(1)) }
+        val monthsWithData = (1..3).count { b -> before.any { YearMonth.from(day(it.timestamp)) == month.minusMonths(b.toLong()) } }
+        if (monthsWithData == 0) return emptyList()
+        return drivers(now, before, share / monthsWithData).filter { kotlin.math.abs(it.change) >= 200 * 100 }
+    }
+
+    /** Per expense category: amount in [now], change vs [baseline] × [scale], and the biggest single spend. */
+    private fun drivers(now: List<Entry>, baseline: List<Entry>, scale: Double): List<Driver> {
+        val ids = (now + baseline).flatMap { e -> e.lines.filter { it.accountId in expenseIds && it.accountId !in feeIds }.map { it.accountId } }.toSet()
+        return ids.mapNotNull { id ->
+            val a = byId[id] ?: return@mapNotNull null
+            val amt = now.sumOf { spend(it, id) }
+            val base = (baseline.sumOf { spend(it, id) } * scale).toLong()
+            val biggest = now.maxByOrNull { spend(it, id) }?.takeIf { spend(it, id) > 0 }
+            Driver(a, amt, amt - base, biggest)
+        }.filter { it.amount > 0 || it.change != 0L }
+            .sortedByDescending { if (baseline.isEmpty()) it.amount else kotlin.math.abs(it.change) }
+            .take(3)
+    }
+
     companion object {
         fun pct(x: Double): String = "${(abs(x) * 100).toInt()}%"
     }

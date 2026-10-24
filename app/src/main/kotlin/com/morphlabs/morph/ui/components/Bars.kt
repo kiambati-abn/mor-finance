@@ -35,7 +35,18 @@ import com.morphlabs.morph.ui.theme.LocalMorph
  * change) is solid and its value is shown above the chart; the others are lighter.
  */
 @Composable
-fun BarChart(items: List<Pair<String, Long>>, modifier: Modifier = Modifier, height: Int = 120, initial: Int = items.lastIndex) {
+fun BarChart(
+    items: List<Pair<String, Long>>,
+    modifier: Modifier = Modifier,
+    height: Int = 120,
+    initial: Int = items.lastIndex,
+    /** Bars to mark with a small gold dot (e.g. unusually big days). */
+    marks: Set<Int> = emptySet(),
+    /** Bar labels to hide so a long row stays readable ("" keeps the slot). */
+    showLabel: (Int) -> Boolean = { true },
+    /** Shown under the chart for the selected bar, e.g. why it's so tall. */
+    detail: (@Composable (Int) -> Unit)? = null,
+) {
     if (items.isEmpty()) return
     var selected by remember(items) { mutableIntStateOf(initial.coerceIn(0, items.lastIndex)) }
     val max = items.maxOf { it.second }.coerceAtLeast(1)
@@ -56,11 +67,14 @@ fun BarChart(items: List<Pair<String, Long>>, modifier: Modifier = Modifier, hei
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { selected = i },
                     contentAlignment = Alignment.BottomCenter,
                 ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Bottom, modifier = Modifier.fillMaxHeight()) {
+                    if (i in marks) Box(Modifier.padding(bottom = 3.dp).height(6.dp).width(6.dp).clip(RoundedCornerShape(3.dp)).background(LocalMorph.current.gold))
                     Box(
-                        Modifier.fillMaxWidth().fillMaxHeight(frac)
+                        Modifier.fillMaxWidth().fillMaxHeight(frac * 0.92f)
                             .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                             .background(if (i == selected) color else color.copy(alpha = 0.35f))
                     )
+                    }
                 }
             }
         }
@@ -68,13 +82,14 @@ fun BarChart(items: List<Pair<String, Long>>, modifier: Modifier = Modifier, hei
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items.forEachIndexed { i, (l, _) ->
                 Text(
-                    l, modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
+                    if (showLabel(i) || i == selected) l else "", modifier = Modifier.weight(1f), textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.labelSmall,
                     color = if (i == selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
             }
         }
+        detail?.let { Spacer(Modifier.height(8.dp)); it(selected) }
     }
 }
 

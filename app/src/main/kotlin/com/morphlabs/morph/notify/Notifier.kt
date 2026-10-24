@@ -58,7 +58,8 @@ object Notifier {
         when (e.status) {
             EntryStatus.NEEDS_REVIEW -> showSort(context, e)
             EntryStatus.AUTO -> showAuto(context, e)
-            EntryStatus.CONFIRMED -> Unit // withdrawals, M-Shwari, Fuliza: nothing to ask
+            EntryStatus.CONFIRMED -> if (e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) showCash(context, e)
+            // M-Shwari, Fuliza: nothing to ask
         }
     }
 
@@ -87,6 +88,20 @@ object Notifier {
         }
         b.addAction(action(context, "More…", quickSortIntent(context, e.id)))
         notify(context, e.id, b.build())
+    }
+
+    /** After a withdrawal: "what's this cash for?", answered by spreading it over categories. */
+    private fun showCash(context: Context, e: Entry) {
+        val s = MorphRepo.get(context).snapshot()
+        val n = Notification.Builder(context, CH_SORT)
+            .setSmallIcon(R.drawable.ic_stat_morph)
+            .setColor(GOLD)
+            .setContentTitle("💵 ${Money.format(s.amount(e))} cash withdrawn")
+            .setContentText("What's it for? Tap to spread it over a few categories (+⭐ each)")
+            .setContentIntent(quickSortIntent(context, e.id))
+            .setAutoCancel(true)
+            .build()
+        notify(context, e.id, n)
     }
 
     private fun showAuto(context: Context, e: Entry) {

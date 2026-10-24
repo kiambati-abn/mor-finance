@@ -40,6 +40,7 @@ import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.ui.Dashboard
+import com.morphlabs.morph.ui.components.BarChart
 import com.morphlabs.morph.ui.components.EntryRow
 import com.morphlabs.morph.ui.components.Gap
 import com.morphlabs.morph.ui.components.MorphCard
@@ -104,6 +105,22 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                 StatTile("Yesterday", d.spentYesterday, Modifier.weight(1f))
                 StatTile("7 days", d.spent7, Modifier.weight(1f))
                 StatTile("30 days", d.spent30, Modifier.weight(1f))
+            }
+        }
+        item {
+            val bars = remember(s) { com.morphlabs.morph.core.insight.Patterns(s.accounts, s.entries, s.zone).daily(d.today) }
+            if (bars.any { it.total > 0 }) {
+                SectionTitle("Last 14 days", action = "Patterns", onAction = goPatterns)
+                MorphCard {
+                    Column(Modifier.padding(16.dp)) {
+                        BarChart(
+                            items = bars.map { (if (it.date == d.today) "Today" else it.date.dayOfWeek.name.take(1)) to it.total },
+                            marks = bars.indices.filter { bars[it].spike }.toSet(),
+                            height = 100,
+                            showLabel = { i -> i == bars.lastIndex || i % 2 == 1 },
+                        ) { i -> DayWhy(bars[i]) }
+                    }
+                }
             }
         }
         val top = d.topSpending(30)
@@ -212,6 +229,27 @@ private fun Hero(d: Dashboard) {
             )
         }
     }
+}
+
+private val dayFmt = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.ENGLISH)
+
+/** The "why" under a day's bar: what that day's money went on. */
+@Composable
+private fun DayWhy(b: com.morphlabs.morph.core.insight.Patterns.DayBar) {
+    Text(
+        (if (b.spike) "● Big day · " else "") + dayFmt.format(b.date),
+        style = MaterialTheme.typography.labelMedium,
+        color = if (b.spike) LocalMorph.current.gold else MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+    )
+    if (b.drivers.isEmpty()) Text("No spending.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    else Text(
+        "Why: " + b.drivers.joinToString(" · ") { dr ->
+            "${dr.account.emoji} ${dr.account.name} ${Money.format(dr.amount)}" +
+                (dr.biggest?.let { e -> (e.counterparty ?: e.note)?.let { " ($it)" } } ?: "")
+        },
+        style = MaterialTheme.typography.bodySmall,
+    )
 }
 
 @Composable

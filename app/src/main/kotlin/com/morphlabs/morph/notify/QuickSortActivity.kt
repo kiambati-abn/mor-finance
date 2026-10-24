@@ -61,7 +61,22 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
         ) {
             val snap = s
             val e = snap?.entries?.firstOrNull { it.id == entryId }
-            if (snap != null && e != null && burst == null) {
+            val cashLeft = snap?.cashToSpread?.firstOrNull { it.first.id == entryId }?.second
+            if (snap != null && e != null && burst == null && e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) {
+                Column(
+                    Modifier.fillMaxWidth().heightIn(max = 640.dp)
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                        .padding(20.dp)
+                ) {
+                    com.morphlabs.morph.ui.screens.CashSpreadPanel(repo, snap, e, cashLeft ?: snap.amount(e)) { stars ->
+                        if (stars > 0) burst = stars to "Cash spread" else close()
+                    }
+                }
+            } else if (snap != null && e != null && burst == null) {
                 Column(
                     Modifier.fillMaxWidth().heightIn(max = 640.dp)
                         .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))

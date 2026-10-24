@@ -71,7 +71,17 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                 }
                 SectionTitle("Spending by month")
                 MorphCard { Column(Modifier.padding(16.dp)) {
-                    BarChart(monthly.map { it.label to it.total })
+                    BarChart(monthly.map { it.label to it.total }) { i ->
+                        val month = java.time.YearMonth.from(today).minusMonths((monthly.lastIndex - i).toLong())
+                        val why = remember(p, i) { p.whyMonth(month, today) }
+                        if (why.isNotEmpty()) Text(
+                            "vs your usual: " + why.joinToString(" · ") { dr ->
+                                "${if (dr.change > 0) "▲" else "▼"} ${dr.account.emoji} ${dr.account.name} ${if (dr.change > 0) "+" else "−"}${Money.format(kotlin.math.abs(dr.change))}" +
+                                    (dr.biggest?.takeIf { dr.change > 0 }?.counterparty?.let { " (mostly $it)" } ?: "")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     Gap(8)
                     val prev = monthly.dropLast(1).filter { it.total > 0 }
                     if (prev.isNotEmpty()) {

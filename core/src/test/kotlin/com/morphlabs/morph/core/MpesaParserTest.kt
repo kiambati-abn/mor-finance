@@ -105,4 +105,13 @@ class MpesaParserTest {
         assert(MpesaParser.isMpesaSender("M-PESA"))
         assert(!MpesaParser.isMpesaSender("Safaricom"))
     }
+
+    @Test fun withdrawnWording() {
+        val t = parse("UJP1AB2CD3 Confirmed. You have withdrawn Ksh2,000.00 from 556677 - JANE AGENCIES KAWANGWARE on 25/10/26 at 10:15 AM. New M-PESA balance is Ksh1,200.00. Transaction cost, Ksh29.00.")
+        assertEquals(TxKind.WITHDRAW, t.kind)
+        assertEquals(200000L, t.amount)
+        assertEquals(2900L, t.fee)
+        assertEquals("JANE AGENCIES KAWANGWARE", t.counterparty)
+        assertEquals(LocalDateTime.of(2026, 10, 25, 10, 15), t.time)
+    }
 }

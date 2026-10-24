@@ -473,6 +473,38 @@ class MorphRepo private constructor(context: Context) {
 
     fun stars(): Int = snapshot().stars
 
+    // ---- cash ---------------------------------------------------------------------------------
+
+    /**
+     * Says what cash from a withdrawal is for, in one go: e.g. Food 500 + Transport 300 + Family 1,000.
+     * Each part becomes a cash spend; whatever isn't spread simply stays in Cash.
+     */
+    fun spreadCash(withdrawalId: Long, parts: List<Pair<Long, Long>>) {
+        val s = snapshot()
+        val cash = s.role(SystemRole.CASH)
+        val now = System.currentTimeMillis()
+        db.beginTransaction()
+        try {
+            for ((accountId, amount) in parts.filter { it.second > 0 }) {
+                val a = s.byId[accountId] ?: continue
+                insert(Posting.manual(now, "${a.name} (cash)", amount, cash, accountId).copy(counterparty = "Cash", counterpartyKey = "cash:$withdrawalId"), null)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        val n = parts.count { it.second > 0 }
+        if (n > 0) addReward(n, "Spread cash")
+        changed()
+    }
+
+    /** "Keep it as cash": stop asking about this withdrawal. */
+    fun keepAsCash(withdrawalId: Long) {
+        val done = (meta(KEY_CASH_DONE)?.split(',').orEmpty() + withdrawalId.toString()).filter { it.isNotBlank() }.takeLast(100)
+        setMeta(KEY_CASH_DONE, done.joinToString(","))
+        changed()
+    }
+
     // ---- envelopes ----------------------------------------------------------------------------
 
     /** Turns envelopes on (from now) or off. Turning them off keeps what you assigned, for next time. */
@@ -649,7 +681,8 @@ class MorphRepo private constructor(context: Context) {
             buildList { while (c.moveToNext()) add(Allocation(c.getLong(0), c.getLong(1), c.getLong(2), c.getLong(3))) }
         }
         val envStart = meta(KEY_ENVELOPES_START)?.toLongOrNull()
-        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", stars, bonusDays, zone)
+        val cashDone = meta(KEY_CASH_DONE)?.split(',')?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet()
+        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", cashDone, stars, bonusDays, zone)
     }
 
     private fun Cursor.str(i: Int): String? = if (isNull(i)) null else getString(i)
@@ -671,6 +704,7 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_AUTOPILOT = "autopilot"
         private const val KEY_ENVELOPES_START = "envelopes_start"
         private const val KEY_BUDGET_VIEW = "budget_view"
+        private const val KEY_CASH_DONE = "cash_done"
         private const val KEY_LAST_BACKUP = "last_backup"
         private const val KEY_BACKUP_ERROR = "backup_error"
 

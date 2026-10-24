@@ -31,6 +31,8 @@ class Snapshot(
     val envelopesStart: Long? = null,
     /** Budget view: hide real balances, show what's left in envelopes. */
     val budgetView: Boolean = false,
+    /** Withdrawals you said to keep as plain cash. */
+    val cashDone: Set<Long> = emptySet(),
     val stars: Int,
     val bonusDays: Set<String>,
     val zone: ZoneId,
@@ -111,7 +113,19 @@ class Snapshot(
         r.opening + r.gaps.sumOf { it.amount }
     }
 
-    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, stars, bonusDays, zone)
+    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, cashDone, stars, bonusDays, zone)
+
+    /** Recent cash withdrawals with money not yet said what it's for: (withdrawal, still unspread). */
+    val cashToSpread: List<Pair<Entry, Long>> by lazy {
+        val cash = role(SystemRole.CASH)
+        val weekAgo = (entries.maxOfOrNull { it.timestamp } ?: 0L) - 14L * 24 * 3600 * 1000
+        entries.filter { it.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW && it.timestamp >= weekAgo && it.id !in cashDone }
+            .mapNotNull { w ->
+                val got = w.lines.firstOrNull { it.accountId == cash }?.amount ?: return@mapNotNull null
+                val spread = entries.filter { it.counterpartyKey == "cash:${w.id}" }.sumOf { e -> e.lines.filter { it.accountId == cash && it.amount < 0 }.sumOf { -it.amount } }
+                (w to (got - spread)).takeIf { it.second > 0 }
+            }.sortedByDescending { it.first.timestamp }
+    }
 
     /** Envelopes, when they're on. */
     val book: EnvelopeBook? by lazy { envelopesStart?.let { EnvelopeBook(accounts, entries, allocations, it, zone) } }

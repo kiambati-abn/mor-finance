@@ -85,4 +85,27 @@ class PatternsTest {
         assertEquals(4_000_00L, a.spentIn3Days)
         assertEquals(0.4, a.share, 0.001)
     }
+
+    @Test fun spikesAreMarkedWithTheirReason() {
+        val entries = mutableListOf<Entry>()
+        for (i in 0..20) entries += pay(today.minusDays(i.toLong()), 13, 300_00, hint("food"), "CAFE")
+        entries += pay(today.minusDays(2), 10, 5_000_00, hint("rent"), "LANDLORD", TxKind.PAYBILL)
+        val bars = p(entries).daily(today)
+        assertEquals(14, bars.size)
+        val spike = bars.single { it.spike }
+        assertEquals(today.minusDays(2), spike.date)
+        assertEquals(hint("rent"), spike.drivers.first().account.id)
+        assertEquals("LANDLORD", spike.drivers.first().biggest!!.counterparty)
+    }
+
+    @Test fun whyThisMonthIsDifferent() {
+        val entries = mutableListOf<Entry>()
+        for (m in 1..3) entries += pay(java.time.YearMonth.from(today).minusMonths(m.toLong()).atDay(5), 13, 3_100_00, hint("transport"), "BUS")
+        entries += pay(today.minusDays(3), 22, 3_000_00, hint("fun"), "CLUB")
+        val why = p(entries).whyMonth(java.time.YearMonth.from(today), today)
+        assertEquals(hint("fun"), why.first().account.id)
+        assertEquals(3_000_00L, why.first().change)
+        assertEquals("CLUB", why.first().biggest!!.counterparty)
+        assert(why.any { it.account.id == hint("transport") && it.change < 0 })
+    }
 }

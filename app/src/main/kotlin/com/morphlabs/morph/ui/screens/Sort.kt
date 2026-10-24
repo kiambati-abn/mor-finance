@@ -73,6 +73,7 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
     var history by remember { mutableStateOf(listOf<Long>()) }
     var backIndex by remember { mutableStateOf<Int?>(null) }
     var last by remember { mutableStateOf<LastSort?>(null) }
+    var cashOpen by remember { mutableStateOf<Pair<Entry, Long>?>(null) }
     val scope = rememberCoroutineScope()
 
     // Skipped ones go to the end of the line instead of disappearing.
@@ -116,6 +117,19 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
                     }
                 }) { Text("↩ Undo this one") }
             }
+            // Cash withdrawals waiting to be spread come first: one card each.
+            if (backIndex == null) for ((w, left) in s.cashToSpread.take(3)) {
+                MorphCard(Modifier.padding(bottom = 8.dp), onClick = { cashOpen = w to left }) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("💵", fontSize = 26.sp)
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text("${Money.format(left)} cash to spread", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Text("From ${w.counterparty ?: "a withdrawal"} · ${whenText(w.timestamp, s.zone)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text("Spread →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
             if (current == null) AllDone(repo, s)
             else SwipeArea(
                 onRight = { if (history.isNotEmpty() && (backIndex ?: history.size) > 0) backIndex = (backIndex ?: history.size) - 1 },
@@ -139,6 +153,7 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
             Gap(72)
         }
         burst?.let { (stars, label) -> StarBurst(stars, label) { burst = null } }
+        cashOpen?.let { (w, left) -> CashSpreadDialog(repo, s, w, left) { cashOpen = null } }
         last?.let { l ->
             LaunchedEffect(l) { delay(6_000); if (last == l) last = null }
             Row(
