@@ -160,6 +160,10 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 - **Sorting:** swipe → to go back and ← to skip or go forward; Undo (bar at the bottom, and on the reward notification); ← Previous to step back through what you just sorted; Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
 - **Start over:** Me → Start over. Either keep accounts and budgets or wipe everything; you then go back to setup and re-import history. A copy is saved first.
 
+## Setup (5 steps)
+
+Welcome → Permissions → Battery → Bring in your history → Balances. **← Back** and **Next →** at the top, plus the phone's Back button, move freely between steps; nothing is final until **Finish**. Coming back to the history step shows the last import, with "Import again from this date" (re-importing never duplicates).
+
 ## Tracking start date
 
 - Set during setup on the "Bring in your history" step: a 📅 Start date card (tap to pick any day on a calendar) plus quick choices: Today · This month · 1 / 3 / 6 months · All. Skipping starts today.

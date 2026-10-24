@@ -60,17 +60,28 @@ import kotlinx.coroutines.withContext
 @Composable
 fun OnboardingScreen(repo: MorphRepo, s: Snapshot) {
     var step by rememberSaveable { mutableIntStateOf(0) }
+    // What the last history import said, so coming back to that step shows it.
+    var lastImport by rememberSaveable { mutableStateOf<String?>(null) }
+    androidx.activity.compose.BackHandler(enabled = step > 0) { step-- }
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("${step + 1} / 5", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Back / step dots / Next: move freely and change anything before finishing.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = { step-- }, enabled = step > 0) { Text(if (step > 0) "← Back" else "") }
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center) {
+                for (i in 0..4) Text(if (i == step) " ● " else " ○ ", color = if (i <= step) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline)
+            }
+            TextButton(onClick = { step++ }, enabled = step < 4) { Text(if (step < 4) "Next →" else "") }
+        }
+        Text("Step ${step + 1} of 5", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Gap(8)
         when (step) {
             0 -> Welcome(repo) { step = 1 }
             1 -> Permissions { step = 2 }
             2 -> Battery { step = 3 }
-            3 -> History(repo) { step = 4 }
+            3 -> History(repo, lastImport, { lastImport = it }) { step = 4 }
             else -> Balances(repo, s) { repo.onboarded = true }
         }
     }
@@ -192,7 +203,7 @@ private fun Battery(next: () -> Unit) {
 }
 
 @Composable
-private fun History(repo: MorphRepo, next: () -> Unit) {
+private fun History(repo: MorphRepo, lastImport: String?, onImported: (String) -> Unit, next: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val today = remember { repo.dayOf(System.currentTimeMillis()) }
@@ -255,8 +266,15 @@ private fun History(repo: MorphRepo, next: () -> Unit) {
                         InboxImporter.import(ctx, since, onProgress = { progress = it })
                     }
                     running = false
+                    result?.let { onImported(it.summary()) }
                 }
-            }, modifier = Modifier.fillMaxWidth().height(52.dp), enabled = InboxImporter.hasPermission(ctx)) { Text("Import") }
+            }, modifier = Modifier.fillMaxWidth().height(52.dp), enabled = InboxImporter.hasPermission(ctx)) {
+                Text(if (lastImport != null) "Import again from this date" else "Import")
+            }
+            if (lastImport != null) {
+                Text("Last time: $lastImport", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
+                TextButton(onClick = next) { Text("Keep that and continue →") }
+            }
             TextButton(onClick = {
                 repo.startDate = repo.dayOf(System.currentTimeMillis()).atStartOfDay(repo.zone).toInstant().toEpochMilli()
                 next()
