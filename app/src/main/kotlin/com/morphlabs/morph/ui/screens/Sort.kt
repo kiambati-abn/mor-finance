@@ -75,6 +75,7 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
     var backIndex by remember { mutableStateOf<Int?>(null) }
     var last by remember { mutableStateOf<LastSort?>(null) }
     var cashOpen by remember { mutableStateOf<Pair<Entry, Long>?>(null) }
+    var startDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = androidx.compose.ui.platform.LocalContext.current
 
@@ -99,6 +100,12 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
                 Text("  ")
                 Pill("${Game.level(s.stars).emoji} ${s.stars}⭐")
             }
+            // Where tracking starts, changeable right here.
+            s.startDate?.let { st ->
+                TextButton(onClick = { startDialog = true }) {
+                    Text("📅 From ${java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH).format(java.time.Instant.ofEpochMilli(st).atZone(s.zone).toLocalDate())} · Change")
+                }
+            } ?: TextButton(onClick = { startDialog = true }) { Text("📅 Set a start date") }
             Gap(8)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val canBack = history.isNotEmpty() && (backIndex ?: history.size) > 0
@@ -186,6 +193,7 @@ fun SortScreen(repo: MorphRepo, s: Snapshot) {
             ) { party = null }
         }
         cashOpen?.let { (w, left) -> CashSpreadDialog(repo, s, w, left) { cashOpen = null } }
+        if (startDialog) StartDateDialog(repo, today) { startDialog = false }
         last?.let { l ->
             LaunchedEffect(l) { delay(6_000); if (last == l) last = null }
             Row(
