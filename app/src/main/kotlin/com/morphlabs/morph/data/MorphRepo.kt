@@ -77,6 +77,11 @@ class MorphRepo private constructor(context: Context) {
         get() = meta(KEY_THEME) ?: "system"
         set(v) = setMeta(KEY_THEME, v)
 
+    /** Tracking start (start of a day, epoch ms), or null for no limit. */
+    var startDate: Long?
+        get() = meta(KEY_START_DATE)?.toLongOrNull()
+        set(v) { setMeta(KEY_START_DATE, v?.toString()); changed() }
+
     /** Auto-sort: "off" (only rock-solid matches), "careful" or "bold". */
     var autopilot: String
         get() = meta(KEY_AUTOPILOT) ?: "off"
@@ -98,8 +103,12 @@ class MorphRepo private constructor(context: Context) {
      * [finishBatch] at the end.
      */
     @Synchronized
-    fun ingest(body: String, receivedAt: Long, batch: Boolean = false): IngestResult? {
+    fun ingest(body: String, receivedAt: Long, batch: Boolean = false, allowBeforeStart: Boolean = false): IngestResult? {
         var sms = MpesaParser.parse(body) ?: return null
+        if (!allowBeforeStart) startDate?.let { start ->
+            val t = sms.time?.atZone(zone)?.toInstant()?.toEpochMilli() ?: receivedAt
+            if (t < start) return null // before tracking starts: ignored until you pull earlier history
+        }
         val dedupe = sms.code?.let { "$it:${sms.kind}" } ?: ("body:" + sha1(MpesaParser.clean(body)))
         if (exists(dedupe)) return null
 
@@ -800,7 +809,7 @@ class MorphRepo private constructor(context: Context) {
         }
         val envStart = meta(KEY_ENVELOPES_START)?.toLongOrNull()
         val cashDone = meta(KEY_CASH_DONE)?.split(',')?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet()
-        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", cashDone, stars, bonusDays, zone)
+        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", cashDone, startDate, stars, bonusDays, zone)
     }
 
     private fun Cursor.str(i: Int): String? = if (isNull(i)) null else getString(i)
@@ -825,6 +834,7 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_BACKUP_EVERY = "backup_every_days"
         private const val KEY_RELEARN = "relearn_at"
         private const val KEY_BUDGET_ALERTS = "budget_alerts"
+        private const val KEY_START_DATE = "start_date"
         private const val KEY_RELEARN_RESULT = "relearn_result"
         private const val KEY_ENVELOPES_START = "envelopes_start"
         private const val KEY_BUDGET_VIEW = "budget_view"

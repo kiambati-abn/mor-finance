@@ -63,6 +63,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
     var editing by remember { mutableStateOf<Account?>(null) }
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
     var startOver by remember { mutableStateOf(false) }
+    var startDialog by remember { mutableStateOf(false) }
     var reveal by remember { mutableStateOf(false) }
     val autoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
@@ -277,6 +278,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                     SettingRow("🔍  Patterns: deep look at your money", goPatterns)
                     SettingRow("🗂️  Accounts & budgets", goAccounts)
                     SettingRow("📜  All transactions", goAll)
+                    SettingRow("📅  Tracking starts: ${repo.startDate?.let { java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate().let { d -> java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH).format(d) } } ?: "from the beginning"}") { startDialog = true }
                     SettingRow("🔄  Re-check SMS inbox") {
                         scope.launch {
                             val r = withContext(Dispatchers.IO) { InboxImporter.import(ctx, 0) }
@@ -304,6 +306,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
         }
     }
     editing?.let { a -> AccountEditDialog(repo, s, a) { editing = null } }
+    if (startDialog) StartDateDialog(repo, d.today) { startDialog = false }
     if (startOver) AlertDialog(
         onDismissRequest = { startOver = false },
         title = { Text("Start over?") },

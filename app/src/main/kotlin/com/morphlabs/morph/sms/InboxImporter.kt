@@ -28,8 +28,20 @@ object InboxImporter {
         return r
     }
 
+    /**
+     * "Pull earlier history": imports M-Pesa SMS from [from] up to the current start date, then
+     * moves the start date back to [from] (0 = everything, and no start date any more).
+     */
+    fun pullEarlier(context: Context, from: Long, onProgress: (Int) -> Unit = {}): Result {
+        val repo = MorphRepo.get(context)
+        val until = repo.startDate ?: return Result(0, 0, 0)
+        val r = import(context, maxOf(0L, from - 1), onProgress = onProgress, until = until, allowBeforeStart = true)
+        repo.startDate = if (from <= 0L) null else from
+        return r
+    }
+
     /** @param sinceMillis only messages newer than this; 0 for everything. */
-    fun import(context: Context, sinceMillis: Long, onProgress: (Int) -> Unit = {}): Result {
+    fun import(context: Context, sinceMillis: Long, onProgress: (Int) -> Unit = {}, until: Long = Long.MAX_VALUE, allowBeforeStart: Boolean = false): Result {
         if (!hasPermission(context)) return Result(0, 0, 0)
         val repo = MorphRepo.get(context)
         var read = 0
@@ -39,8 +51,8 @@ object InboxImporter {
         val cursor = context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
             arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
-            "UPPER(${Telephony.Sms.ADDRESS}) IN ('MPESA', 'M-PESA') AND ${Telephony.Sms.DATE} > ?",
-            arrayOf(sinceMillis.toString()),
+            "UPPER(${Telephony.Sms.ADDRESS}) IN ('MPESA', 'M-PESA') AND ${Telephony.Sms.DATE} > ? AND ${Telephony.Sms.DATE} < ?",
+            arrayOf(maxOf(sinceMillis, if (allowBeforeStart) 0L else (repo.startDate ?: 0L) - 1).toString(), until.toString()),
             "${Telephony.Sms.DATE} ASC",
         ) ?: return Result(0, 0, 0)
         cursor.use { c ->
@@ -48,7 +60,7 @@ object InboxImporter {
                 val body = c.getString(1) ?: continue
                 val date = c.getLong(2)
                 read++
-                val r = repo.ingest(body, date, batch = true)
+                val r = repo.ingest(body, date, batch = true, allowBeforeStart = allowBeforeStart)
                 if (r != null) {
                     added++
                     if (r.entry.status == com.morphlabs.morph.core.model.EntryStatus.NEEDS_REVIEW) toSort++

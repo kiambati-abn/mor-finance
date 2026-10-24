@@ -33,6 +33,8 @@ class Snapshot(
     val budgetView: Boolean = false,
     /** Withdrawals you said to keep as plain cash. */
     val cashDone: Set<Long> = emptySet(),
+    /** Tracking start: nothing earlier is imported or asked about. Null = no limit. */
+    val startDate: Long? = null,
     val stars: Int,
     val bonusDays: Set<String>,
     val zone: ZoneId,
@@ -44,7 +46,9 @@ class Snapshot(
     fun account(r: SystemRole): Account = accounts.first { it.role == r }
     fun balance(a: Account): Long = Balances.natural(a, raw)
 
-    val pending: List<Entry> by lazy { entries.filter { it.status == EntryStatus.NEEDS_REVIEW }.sortedByDescending { it.timestamp } }
+    val pending: List<Entry> by lazy {
+        entries.filter { it.status == EntryStatus.NEEDS_REVIEW && (startDate == null || it.timestamp >= startDate) }.sortedByDescending { it.timestamp }
+    }
     val newestFirst: List<Entry> by lazy { entries.sortedByDescending { it.timestamp } }
 
     /** Wallet and fee accounts: never the "what was it" side of a transaction. */
@@ -125,7 +129,7 @@ class Snapshot(
         r.opening + r.gaps.sumOf { it.amount }
     }
 
-    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, cashDone, stars, bonusDays, zone)
+    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, cashDone, startDate, stars, bonusDays, zone)
 
     /** Recent cash withdrawals with money not yet said what it's for: (withdrawal, still unspread). */
     val cashToSpread: List<Pair<Entry, Long>> by lazy {

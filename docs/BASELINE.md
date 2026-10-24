@@ -146,6 +146,13 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 - **Sorting:** swipe → to go back and ← to skip or go forward; Undo (bar at the bottom, and on the reward notification); ← Previous to step back through what you just sorted; Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
 - **Start over:** Me → Start over. Either keep accounts and budgets or wipe everything; you then go back to setup and re-import history. A copy is saved first.
 
+## Tracking start date
+
+- Set during setup (the history window you chose, or today if you skipped), and changeable under Me → 📅 Tracking starts.
+- M-Pesa SMS from before the start date are not imported. Waiting items from before it are hidden from Sort (kept, not deleted).
+- **Pull earlier history:** 1 month, 3 months, 6 months, 1 year or everything before the start date. Morph imports that period, moves the start date back, and offers 🪄 Sort them for me.
+- M-Pesa balances stay correct either way: reconciliation re-anchors to the earliest imported SMS.
+
 ## Backups
 
 - **Automatic:** Me → Backup → pick a file once (choose Google Drive in the picker), then choose how often: daily, weekly or monthly. Morph rewrites it on that schedule and whenever you open the app and the last backup is over a day old. If it fails, you get a notification.

@@ -227,12 +227,20 @@ private fun History(repo: MorphRepo, next: () -> Unit) {
             Button(onClick = {
                 running = true
                 scope.launch {
-                    val since = if (months == 0) 0L else System.currentTimeMillis() - months * 31L * 24 * 3600 * 1000
-                    result = withContext(Dispatchers.IO) { InboxImporter.import(ctx, since) { progress = it } }
+                    val since = if (months == 0) 0L else repo.dayOf(System.currentTimeMillis()).minusMonths(months.toLong())
+                        .atStartOfDay(repo.zone).toInstant().toEpochMilli()
+                    result = withContext(Dispatchers.IO) {
+                        // Tracking starts here; earlier history can be pulled in later from Me.
+                        repo.startDate = if (months == 0) null else since
+                        InboxImporter.import(ctx, since, onProgress = { progress = it })
+                    }
                     running = false
                 }
             }, modifier = Modifier.fillMaxWidth().height(52.dp), enabled = InboxImporter.hasPermission(ctx)) { Text("Import") }
-            TextButton(onClick = next) { Text("Skip, start from today") }
+            TextButton(onClick = {
+                repo.startDate = repo.dayOf(System.currentTimeMillis()).atStartOfDay(repo.zone).toInstant().toEpochMilli()
+                next()
+            }) { Text("Skip, start from today") }
         }
     }
 }
