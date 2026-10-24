@@ -11,9 +11,23 @@ say() { printf '\n\033[1;35m🦋 %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
 
 say "1/5 Looking for the newest Morph update file…"
-bundle="$(ls -t "$HOME"/Downloads/mor-finance*.bundle "$HOME"/MAX/mor-finance*.bundle 2>/dev/null | head -n1 || true)"
-[ -n "$bundle" ] || fail "No mor-finance*.bundle found in ~/Downloads or ~/MAX. Download the file Claude sent, then run this again."
-echo "Using: $bundle"
+echo "Looking in: ~/Downloads, ~/MAX and your home folder."
+bundle="$(ls -t "$HOME"/Downloads/mor-finance*.bundle "$HOME"/MAX/mor-finance*.bundle "$HOME"/mor-finance*.bundle 2>/dev/null | head -n1 || true)"
+if [ -z "$bundle" ]; then
+  echo
+  echo "I couldn't find the update file (mor-finance-latest.bundle)."
+  echo "  1. In the chat with Claude, tap the file mor-finance-latest.bundle to download it."
+  echo "  2. Save it in your Downloads folder:  $HOME/Downloads"
+  echo
+  read -r -p "Press Enter once it's downloaded (or type its full path): " typed
+  if [ -n "$typed" ]; then bundle="$typed"; else
+    bundle="$(ls -t "$HOME"/Downloads/mor-finance*.bundle "$HOME"/MAX/mor-finance*.bundle "$HOME"/mor-finance*.bundle 2>/dev/null | head -n1 || true)"
+  fi
+fi
+[ -n "$bundle" ] && [ -f "$bundle" ] || fail "Still no update file. Download mor-finance-latest.bundle into $HOME/Downloads, then run this again."
+echo "Using: $bundle (saved $(date -r "$bundle" '+%d %b %H:%M'))"
+read -r -p "Is this the file Claude just sent? [Y/n] " ok
+case "$ok" in [nN]*) fail "Download the newest mor-finance-latest.bundle into $HOME/Downloads (replace the old one), then run this again." ;; esac
 [ -d "$CODE/.git" ] || fail "Can't find your Morph code at $CODE."
 
 say "2/5 Loading the changes…"
