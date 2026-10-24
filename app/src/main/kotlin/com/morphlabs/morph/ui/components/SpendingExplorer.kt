@@ -40,13 +40,19 @@ fun SpendingExplorer(s: Snapshot, today: LocalDate) {
     var group by rememberSaveable { mutableStateOf("category") }
     val openList = LocalOpenList.current
 
+    val firstDay = remember(s) {
+        s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
+            ?.let { java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate() } ?: today
+    }
     val fromDate = when (period) {
         "7" -> today.minusDays(6)
         "month" -> today.withDayOfMonth(1)
         "90" -> today.minusDays(89)
+        "year" -> today.withDayOfYear(1)
+        "all" -> firstDay
         else -> today.minusDays(29)
     }
-    val periodName = mapOf("7" to "7 days", "30" to "30 days", "month" to "this month", "90" to "3 months")[period]!!
+    val periodName = mapOf("7" to "7 days", "30" to "30 days", "month" to "this month", "90" to "3 months", "year" to "this year", "all" to "all time")[period]!!
     fun ms(d: LocalDate) = d.atStartOfDay(s.zone).toInstant().toEpochMilli()
     val from = ms(fromDate); val to = ms(today.plusDays(1))
     val spending = remember(s) { Spending(s.accounts, s.entries, s.zone) }
@@ -57,7 +63,7 @@ fun SpendingExplorer(s: Snapshot, today: LocalDate) {
             FilterChip(selected = view == "where", onClick = { view = "where" }, label = { Text("Where") })
             FilterChip(selected = view == "when", onClick = { view = "when" }, label = { Text("When") })
             Text("  ")
-            for ((k, l) in listOf("7" to "7d", "30" to "30d", "month" to "Month", "90" to "3m")) {
+            for ((k, l) in listOf("7" to "7d", "30" to "30d", "month" to "Month", "90" to "3m", "year" to "Year", "all" to "All")) {
                 FilterChip(selected = period == k, onClick = { period = k }, label = { Text(l) })
             }
         }
@@ -94,9 +100,16 @@ fun SpendingExplorer(s: Snapshot, today: LocalDate) {
             }
             if (rows.size > 6) TextButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Show less" else "Show all ${rows.size}") }
         } else {
-            // Days for short periods, weeks for 3 months.
+            // Days for short periods, weeks for 3 months, months for a year or all time.
             val buckets: List<Triple<String, Long, Pair<LocalDate, LocalDate>>> = remember(s, period) {
-                if (period == "90") {
+                if (period == "year" || period == "all") {
+                    val first = java.time.YearMonth.from(fromDate)
+                    val last = java.time.YearMonth.from(today)
+                    generateSequence(first) { it.plusMonths(1) }.takeWhile { !it.isAfter(last) }.toList().takeLast(24).map { m ->
+                        val a = m.atDay(1); val b = if (m == last) today else m.atEndOfMonth()
+                        Triple(m.month.name.take(3).lowercase().replaceFirstChar(Char::uppercaseChar), spending.total(ms(a), ms(b.plusDays(1))), a to b)
+                    }
+                } else if (period == "90") {
                     (12 downTo 0).map { w ->
                         val end = today.minusWeeks(w.toLong()); val start = end.minusDays(6)
                         Triple(DateTimeFormatter.ofPattern("d/M", Locale.ENGLISH).format(start), spending.total(ms(start), ms(end.plusDays(1))), start to end)
@@ -117,7 +130,12 @@ fun SpendingExplorer(s: Snapshot, today: LocalDate) {
                 Text(if (a == b) fmt.format(a) else "${fmt.format(a)} – ${fmt.format(b)}", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (buckets[i].second > 0) TextButton(onClick = {
-                    openList(TxFilter(if (a == b) fmt.format(a) else "Week of ${fmt.format(a)}", spendingOnly = true, from = ms(a), to = ms(b.plusDays(1))))
+                    val title = when {
+                        a == b -> fmt.format(a)
+                        a.dayOfMonth == 1 && (period == "year" || period == "all") -> DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH).format(a)
+                        else -> "Week of ${fmt.format(a)}"
+                    }
+                    openList(TxFilter(title, spendingOnly = true, from = ms(a), to = ms(b.plusDays(1))))
                 }) { Text("See transactions →") }
             }
         }

@@ -44,7 +44,7 @@ Every amount opens the list of its transactions. The list shows its total, and e
 ## Where it went (Home)
 
 - Two views: **Where** (bars by Category, Type or People & places) and **When** (bars per day; per week for 3 months).
-- Periods: 7 days, 30 days, this month, 3 months. Your choice is remembered.
+- Periods: 7 days, 30 days, this month, 3 months, this year, all time (When shows months for the last two). Your choice is remembered. Patterns has the same Year and All options.
 - Each row shows its share of spending; tapping any row or bar opens its transactions.
 - One colour on purpose: bars stay readable with any number of categories.
 
@@ -66,6 +66,12 @@ Every amount opens the list of its transactions. The list shows its total, and e
 - Applies to spending budgets and envelopes (daily ones use what's left today). Savings and debt targets don't warn.
 - Shown on budget/envelope cards, Accounts, Sort buttons ("⚠️ Ksh 100 left") and a Home card ("2 budgets running low", which opens Budgets filtered to Running low).
 - **Alerts:** a notification once when a budget reaches 🔴 Almost out and once if it goes ⛔ Over, per day or month. Switch off under Me → Budget alerts.
+
+## Accounts, one tap away
+
+- Home has **🔍 Find an account…**, which opens Accounts. Search by name, or filter: Spending · Savings · Debts · Wallets · Income · With budget.
+- A spending account with a budget shows **"Ksh 700 left"** in its traffic-light colour, a thin bar and "Spent Ksh 1,300 of 2,000 · 65%". Others show this month's spending, money in, or their balance.
+- The Budgets summary shows what's left (large), a bar and "Spent X of Y · N% used". The envelopes header shows what's left in spending envelopes and % used.
 
 ## Finding and checking budgets
 

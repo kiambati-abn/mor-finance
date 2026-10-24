@@ -73,6 +73,15 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
             }
             Gap(4)
             Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.secondaryContainer).padding(16.dp)) {
+                val spend = list.filter { it.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE }
+                val inEnv = spend.sumOf { maxOf(0L, it.left) }
+                val put = spend.sumOf { maxOf(it.assigned, it.target) }
+                if (put > 0) {
+                    val pct = ((put - inEnv) * 100 / put).coerceIn(0, 100)
+                    Text("${Money.format(inEnv)} left in spending envelopes · $pct% used", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Gap(8)
+                }
                 Text(if (toAssign >= 0) "To assign" else "Assigned more than you have", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(Money.format(toAssign), fontSize = 30.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSecondaryContainer)
                 Text(

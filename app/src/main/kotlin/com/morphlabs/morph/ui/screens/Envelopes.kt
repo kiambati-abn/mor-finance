@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
@@ -67,12 +71,22 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, start
                 Gap()
                 MorphCard {
                     Column(Modifier.padding(16.dp)) {
-                        Text("${Money.format(used)} of ${Money.format(avail)} spent", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            if (used <= avail) "${Money.format(avail - used)} left ${if (daily) "today" else "this month"}"
-                            else "Over by ${Money.format(used - avail)}",
-                            color = if (used <= avail) LocalMorph.current.good else LocalMorph.current.bad,
+                        val level = com.morphlabs.morph.core.budget.Health.level(avail - used, avail)
+                        val pct = if (avail > 0) (used * 100 / avail) else 0
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                if (used <= avail) Money.format(avail - used) else "−" + Money.format(used - avail),
+                                fontSize = 28.sp, fontWeight = FontWeight.Black,
+                                color = com.morphlabs.morph.ui.components.levelColor(level),
+                            )
+                            Text(if (used <= avail) "  left ${if (daily) "today" else "this month"}" else "  over", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { if (avail > 0) (used.toFloat() / avail).coerceIn(0f, 1f) else 0f },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp)),
+                            color = com.morphlabs.morph.ui.components.levelColor(level), trackColor = LocalMorph.current.track, drawStopIndicator = {},
                         )
+                        Text("Spent ${Money.format(used)} of ${Money.format(avail)} · $pct% used", style = MaterialTheme.typography.bodySmall)
                         d.safeToSpend?.let { Text("Safe to spend today: ${Money.format(it)}", style = MaterialTheme.typography.bodySmall) }
                     }
                 }

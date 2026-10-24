@@ -1,5 +1,6 @@
 package com.morphlabs.morph.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,8 +68,12 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
         BackHeader("Patterns", onBack)
         LazyColumn(Modifier.padding(horizontal = 16.dp)) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((d, l) in listOf(30 to "30 days", 90 to "3 months", 180 to "6 months")) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val allDays = remember(s) {
+                        s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
+                            ?.let { java.time.temporal.ChronoUnit.DAYS.between(java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate(), today).toInt() + 1 } ?: 30
+                    }
+                    for ((d, l) in listOf(30 to "30d", 90 to "3m", 180 to "6m", 365 to "Year", maxOf(allDays, 1) to "All")) {
                         FilterChip(selected = days == d, onClick = { days = d }, label = { Text(l) })
                     }
                 }

@@ -57,7 +57,7 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit, goLowBudgets: () -> Unit = goBudgets) {
+fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit, goLowBudgets: () -> Unit = goBudgets, goAccounts: () -> Unit = {}) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
     val openList = LocalOpenList.current
@@ -81,6 +81,18 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         item { Header(d, refreshing) { refresh() } }
         item { Hero(d) { days("Spent today", 0) } }
+        item {
+            // One tap to any account and what its budget has left.
+            Row(
+                Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable(onClick = goAccounts)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("🔍  Find an account…", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text("🗂️ Accounts", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            }
+        }
         val warnings = s.warnings(d.today)
         if (warnings.isNotEmpty()) item {
             Gap()

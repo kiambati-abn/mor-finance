@@ -124,7 +124,7 @@ private fun MainBody(
             when (tab) {
                 Tab.HOME -> HomeScreen(repo, dash, goSort = { setTab(Tab.SORT) }, goMe = { setTab(Tab.ME) }, goAll = { setPage(Page.TRANSACTIONS) },
                     goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { budgetsFilter = "all"; setTab(Tab.ENVELOPES) },
-                    goLowBudgets = { budgetsFilter = "low"; setTab(Tab.ENVELOPES) })
+                    goLowBudgets = { budgetsFilter = "low"; setTab(Tab.ENVELOPES) }, goAccounts = { setPage(Page.ACCOUNTS) })
                 Tab.SORT -> SortScreen(repo, s)
                 Tab.ENVELOPES -> androidx.compose.runtime.key(budgetsFilter) { EnvelopesScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, startFilter = budgetsFilter) }
                 Tab.ME -> MeScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, goAll = { setPage(Page.TRANSACTIONS) }, goPatterns = { setPage(Page.PATTERNS) })
