@@ -66,7 +66,7 @@ fun OnboardingScreen(repo: MorphRepo, s: Snapshot) {
         Text("${step + 1} / 5", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Gap(8)
         when (step) {
-            0 -> Welcome { step = 1 }
+            0 -> Welcome(repo) { step = 1 }
             1 -> Permissions { step = 2 }
             2 -> Battery { step = 3 }
             3 -> History(repo) { step = 4 }
@@ -84,7 +84,24 @@ private fun Title(text: String, sub: String) {
 }
 
 @Composable
-private fun Welcome(next: () -> Unit) {
+private fun Welcome(repo: MorphRepo, next: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
+    val restore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            error = withContext(Dispatchers.IO) {
+                runCatching {
+                    val json = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() } ?: error("Couldn't read the file")
+                    repo.importJson(json)
+                    // Still walk through permissions on this phone; the old phone's backup file link doesn't work here.
+                    repo.onboarded = false
+                    repo.backupUri = null
+                }.exceptionOrNull()?.message
+            }
+            if (error == null) next()
+        }
+    }
     Gap(24)
     Image(painterResource(R.drawable.morph_wing), contentDescription = null, modifier = Modifier.height(180.dp))
     Gap(16)
@@ -96,6 +113,14 @@ private fun Welcome(next: () -> Unit) {
             "Every tap earns stars and teaches Morph your habits.",
     )
     Button(onClick = next, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Let's start") }
+    Gap(8)
+    OutlinedButton(onClick = { restore.launch(arrayOf("application/json", "*/*")) }, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        Text("I have a backup")
+    }
+    error?.let { Gap(8); Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center) }
+    Gap(8)
+    Text("After restoring, allow SMS again in the next steps so new messages keep coming in.",
+        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
 }
 
 @Composable

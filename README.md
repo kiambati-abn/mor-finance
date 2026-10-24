@@ -9,7 +9,9 @@ earns stars and teaches it your habits.
 - **Learns:** after you file the same person/till/paybill twice the same way, Morph files it for you. It also learns your habits (amount + time of day).
 - **Budgets:** daily or monthly amounts on any account: limits for spending, targets for savings, repayment plans for debts. Move budget between envelopes without touching real money.
 - **Feedback:** weekly insights from your own numbers (fees, small repeated payments, weekend habits, 50/30/20 split, emergency fund, runway).
-- **Private:** everything stays on the phone. Backups are files you choose where to keep.
+- **Patterns:** a deeper look: months compared fairly, when you spend (day and hour), what you pay on a rhythm, top people and places, unusual spends, how fast money goes after payday.
+- **Flexible, still simple:** add or edit any account, create your own types ("Church", "Business"), split a transaction, edit what you added by hand, add notes, undo any sort, or start over and re-import.
+- **Private:** everything stays on the phone. Automatic daily backup goes to a file you pick once (e.g. on Google Drive). On a new phone: install → "I have a backup".
 
 ## Install or update (phone plugged into your laptop)
 

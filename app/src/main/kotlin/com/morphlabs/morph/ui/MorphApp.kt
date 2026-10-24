@@ -34,6 +34,7 @@ import com.morphlabs.morph.ui.screens.EnvelopesScreen
 import com.morphlabs.morph.ui.screens.HomeScreen
 import com.morphlabs.morph.ui.screens.MeScreen
 import com.morphlabs.morph.ui.screens.OnboardingScreen
+import com.morphlabs.morph.ui.screens.PatternsScreen
 import com.morphlabs.morph.ui.screens.SortScreen
 import com.morphlabs.morph.ui.screens.TransactionsScreen
 import com.morphlabs.morph.ui.theme.MorphTheme
@@ -43,7 +44,7 @@ import java.time.LocalDate
 
 enum class Tab(val label: String, val emoji: String) { HOME("Home", "🏠"), SORT("Sort", "⭐"), ENVELOPES("Budgets", "✉️"), ME("Me", "🦋") }
 
-enum class Page { ACCOUNTS, TRANSACTIONS }
+enum class Page { ACCOUNTS, TRANSACTIONS, PATTERNS }
 
 private data class Root(val snapshot: Snapshot, val onboarded: Boolean, val theme: String)
 
@@ -79,6 +80,7 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
     when (page) {
         Page.ACCOUNTS -> { AccountsScreen(repo, s, onBack = { page = null }); return }
         Page.TRANSACTIONS -> { TransactionsScreen(repo, s, onBack = { page = null }); return }
+        Page.PATTERNS -> { PatternsScreen(repo, s, onBack = { page = null }); return }
         null -> Unit
     }
 
@@ -104,10 +106,10 @@ private fun Main(repo: MorphRepo, s: Snapshot) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(repo, dash, goSort = { tab = Tab.SORT }, goMe = { tab = Tab.ME }, goAll = { page = Page.TRANSACTIONS })
+                Tab.HOME -> HomeScreen(repo, dash, goSort = { tab = Tab.SORT }, goMe = { tab = Tab.ME }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS })
                 Tab.SORT -> SortScreen(repo, s)
                 Tab.ENVELOPES -> EnvelopesScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS })
-                Tab.ME -> MeScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS }, goAll = { page = Page.TRANSACTIONS })
+                Tab.ME -> MeScreen(repo, dash, goAccounts = { page = Page.ACCOUNTS }, goAll = { page = Page.TRANSACTIONS }, goPatterns = { page = Page.PATTERNS })
             }
         }
     }

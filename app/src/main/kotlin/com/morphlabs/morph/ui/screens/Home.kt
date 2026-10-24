@@ -48,7 +48,7 @@ import com.morphlabs.morph.ui.components.StatTile
 import com.morphlabs.morph.ui.theme.LocalMorph
 
 @Composable
-fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit) {
+fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -93,8 +93,8 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         }
         val top = d.topSpending(30)
         if (top.isNotEmpty()) item {
-            SectionTitle("Where it went · 30 days")
-            MorphCard {
+            SectionTitle("Where it went · 30 days", action = "Patterns", onAction = goPatterns)
+            MorphCard(onClick = goPatterns) {
                 Column(Modifier.padding(16.dp)) {
                     val max = top.first().second.coerceAtLeast(1)
                     for ((a, v) in top) {
@@ -106,6 +106,19 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                             Modifier.padding(top = 4.dp, bottom = 10.dp).fillMaxWidth(v.toFloat() / max).height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)).background(MaterialTheme.colorScheme.primary)
                         )
+                    }
+                }
+            }
+        }
+        if (repo.backupUri == null && s.entries.size > 20) item {
+            Gap()
+            MorphCard(onClick = goMe) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("☁️", fontSize = 24.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Turn on automatic backup", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("If you lose this phone, your history comes back with one file.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

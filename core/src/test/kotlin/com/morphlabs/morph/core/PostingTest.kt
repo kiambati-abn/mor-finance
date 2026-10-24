@@ -79,4 +79,30 @@ class PostingTest {
             assertEquals("balance after ${m.code}", m.balance, Balances.natural(mpesa, Balances.raw(entries)))
         }
     }
+
+    private val structural = setOf(role(SystemRole.MPESA), role(SystemRole.TRANSACTION_COSTS), role(SystemRole.WITHDRAWAL_CHARGES), role(SystemRole.FULIZA_CHARGES))
+
+    @Test fun splitKeepsWalletAndFeesAndPicksTheBiggestPart() {
+        val e = post(Fixtures.SEND_WITH_FEE, hint("family")) // 200 + 7 fee
+        val s = Posting.split(e, listOf(hint("family") to 15000, hint("friends") to 5000), structural)
+        assertEquals(0L, s.lines.sumOf { it.amount })
+        assertEquals(hint("family"), s.categoryId)
+        assertEquals(20000L, Posting.categoryAmount(s, structural))
+        assert(s.lines.contains(Line(role(SystemRole.TRANSACTION_COSTS), 700)))
+        assert(s.lines.contains(Line(role(SystemRole.MPESA), -20700)))
+        assert(s.lines.contains(Line(hint("friends"), 5000)))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun splitMustAddUp() {
+        Posting.split(post(Fixtures.TILL_HOTEL, hint("food")), listOf(hint("food") to 100), structural)
+    }
+
+    @Test fun categoryAmountForMoneyIn() {
+        val e = post(Fixtures.RECEIVED, hint("salary"))
+        assertEquals(200000L, Posting.categoryAmount(e, structural))
+        val split = Posting.split(e, listOf(hint("salary") to 150000, hint("gifts") to 50000), structural)
+        assertEquals(200000L, Posting.categoryAmount(split, structural))
+        assertEquals(hint("salary"), split.categoryId)
+    }
 }

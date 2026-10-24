@@ -43,6 +43,7 @@ import com.morphlabs.morph.core.model.BudgetPeriod
 import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.model.EntrySource
 import com.morphlabs.morph.core.model.SystemRole
+import com.morphlabs.morph.core.ledger.Posting
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.data.Snapshot
@@ -81,12 +82,12 @@ fun pickOrder(accounts: List<Account>, outgoing: Boolean?): List<Pair<AccountGro
 @Composable
 fun AccountGrid(accounts: List<Account>, outgoing: Boolean?, exclude: Set<Long> = emptySet(), onPick: (Account) -> Unit) {
     Column {
-        for ((group, list) in pickOrder(accounts, outgoing)) {
-            val shown = list.filter { it.id !in exclude }
-            if (shown.isEmpty()) continue
-            Text(group.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (a in shown) OutlinedButton(onClick = { onPick(a) }, shape = RoundedCornerShape(14.dp)) { Text(a.label) }
+        for ((_, list) in pickOrder(accounts, outgoing)) {
+            for ((label, shown) in list.filter { it.id !in exclude }.groupBy { it.typeLabel }) {
+                Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (a in shown) OutlinedButton(onClick = { onPick(a) }, shape = RoundedCornerShape(14.dp)) { Text(a.label) }
+                }
             }
         }
     }
@@ -185,16 +186,30 @@ private fun PickRow(label: String, a: Account?, onClick: () -> Unit) {
 fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
     var picking by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val a = e.categoryId?.let { s.byId[it] }
+    var editing by remember { mutableStateOf(false) }
+    var splitting by remember { mutableStateOf(false) }
+    var note by remember { mutableStateOf(e.note ?: "") }
+    val cats = s.categories(e)
+    fun saveNote() { if (note.trim() != (e.note ?: "")) { val n = note; Thread { repo.setNote(e.id, n) }.start() } }
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { saveNote(); onDismiss() },
         title = { Text((if (s.outgoing(e)) "−" else "+") + Money.format(s.amount(e))) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 Text(e.description, style = MaterialTheme.typography.titleMedium)
                 Text(whenText(e.timestamp, s.zone), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Gap()
-                Text("Filed under: ${a?.label ?: "—"}  (${e.status.name.lowercase().replace('_', ' ')})")
+                if (cats.size > 1) {
+                    Text("Split between:", fontWeight = FontWeight.SemiBold)
+                    for (l in Posting.categorySide(e, s.structural)) Text("  ${s.byId[l.accountId]?.label}  ${Money.format(kotlin.math.abs(l.amount))}")
+                } else Text("Filed under: ${cats.firstOrNull()?.label ?: "—"}  (${e.status.name.lowercase().replace('_', ' ')})")
+                Gap(8)
+                OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Gap(8)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (e.source == EntrySource.MANUAL && e.kind == null) OutlinedButton(onClick = { editing = true }) { Text("Edit") }
+                    if (e.source != EntrySource.SYSTEM) OutlinedButton(onClick = { splitting = true }) { Text("Split") }
+                }
                 if (e.code != null) Text("M-Pesa code: ${e.code}", style = MaterialTheme.typography.bodySmall)
                 Gap()
                 Text("Journal", style = MaterialTheme.typography.labelLarge)
@@ -206,6 +221,8 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
                     Gap()
                     Text("SMS", style = MaterialTheme.typography.labelLarge)
                     Text(e.smsBody!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("The amount comes from M-Pesa, so it can't be changed here. Use Split to spread it over several accounts.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
@@ -215,15 +232,18 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
         dismissButton = {
             Row {
                 TextButton(onClick = { confirmDelete = true }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
-                TextButton(onClick = onDismiss) { Text("Close") }
+                TextButton(onClick = { saveNote(); onDismiss() }) { Text("Close") }
             }
         },
     )
     if (picking) AccountPickerDialog("What was it?", s.accounts, s.outgoing(e), onDismiss = { picking = false }) { acc ->
+        saveNote()
         Thread { repo.categorize(e.id, acc.id) }.start()
         picking = false
         onDismiss()
     }
+    if (editing) EditManualDialog(repo, s, e, onDismiss = { editing = false; onDismiss() })
+    if (splitting) SplitDialog(repo, s, e, onDismiss = { splitting = false; onDismiss() })
     if (confirmDelete) AlertDialog(
         onDismissRequest = { confirmDelete = false },
         title = { Text("Delete this transaction?") },
@@ -231,6 +251,108 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
         confirmButton = { TextButton(onClick = { Thread { repo.deleteEntry(e.id) }.start(); confirmDelete = false; onDismiss() }) { Text("Delete") } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Keep") } },
     )
+}
+
+/** Hand-added transactions can change everything: amount, what for, from, to and day. */
+@Composable
+private fun EditManualDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
+    val toLine = e.lines.firstOrNull { it.amount > 0 }
+    val fromLine = e.lines.firstOrNull { it.amount < 0 }
+    var amount by remember { mutableStateOf(Money.format(toLine?.amount ?: 0, withCurrency = false).replace(",", "")) }
+    var desc by remember { mutableStateOf(e.description) }
+    var from by remember { mutableStateOf(fromLine?.let { s.byId[it.accountId] }) }
+    var to by remember { mutableStateOf(toLine?.let { s.byId[it.accountId] }) }
+    var daysBack by remember { mutableIntStateOf(0) }
+    var picking by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit transaction") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                AmountField(amount, { amount = it }, "Amount")
+                Gap(8)
+                OutlinedTextField(desc, { desc = it }, label = { Text("What for?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Gap(8)
+                PickRow("From", from) { picking = "from" }
+                PickRow("To", to) { picking = "to" }
+                Gap(8)
+                Text("Move the date", style = MaterialTheme.typography.labelLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for ((d, l) in listOf(0 to "Keep", 1 to "−1 day", 2 to "−2 days", 7 to "−1 week")) {
+                        FilterChip(selected = daysBack == d, onClick = { daysBack = d }, label = { Text(l) })
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            val cents = Money.parse(amount)
+            TextButton(enabled = cents != null && cents > 0 && from != null && to != null && from != to && desc.isNotBlank(), onClick = {
+                val f = from!!.id; val t = to!!.id; val d = desc.trim()
+                val ts = e.timestamp - daysBack * 24L * 3600 * 1000
+                Thread { repo.updateManual(e.id, ts, d, cents!!, f, t) }.start()
+                onDismiss()
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+    when (picking) {
+        "from" -> AccountPickerDialog("From", s.accounts, null, onDismiss = { picking = null }) { from = it; picking = null }
+        "to" -> AccountPickerDialog("To", s.accounts, null, onDismiss = { picking = null }) { to = it; picking = null }
+    }
+}
+
+/** Spread one transaction over several accounts. The parts must add up, so balances never change. */
+@Composable
+private fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
+    val total = s.amount(e)
+    val existing = Posting.categorySide(e, s.structural)
+    val parts = remember {
+        androidx.compose.runtime.mutableStateListOf<Pair<Account, String>>().apply {
+            for (l in existing) s.byId[l.accountId]?.takeIf { it.pickable }?.let { add(it to Money.format(kotlin.math.abs(l.amount), withCurrency = false).replace(",", "")) }
+        }
+    }
+    var adding by remember { mutableStateOf(false) }
+    val sum = parts.sumOf { Money.parse(it.second) ?: 0L }
+    val left = total - sum
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Split ${Money.format(total)}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                parts.forEachIndexed { i, (a, v) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(a.label, modifier = Modifier.weight(1f))
+                        AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f))
+                        TextButton(onClick = { parts.removeAt(i) }) { Text("✕") }
+                    }
+                }
+                TextButton(onClick = { adding = true }) { Text("+ Add an account") }
+                Text(
+                    when {
+                        left == 0L -> "Adds up ✓"
+                        left > 0 -> "${Money.format(left)} still to place"
+                        else -> "${Money.format(-left)} too much"
+                    },
+                    color = if (left == 0L) com.morphlabs.morph.ui.theme.LocalMorph.current.good else MaterialTheme.colorScheme.error,
+                )
+                if (left > 0 && parts.isNotEmpty()) TextButton(onClick = {
+                    val (a, v) = parts.last(); parts[parts.lastIndex] = a to Money.format((Money.parse(v) ?: 0L) + left, withCurrency = false).replace(",", "")
+                }) { Text("Put the rest on ${parts.last().first.name}") }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = left == 0L && parts.isNotEmpty(), onClick = {
+                val list = parts.map { it.first.id to (Money.parse(it.second) ?: 0L) }
+                Thread { repo.split(e.id, list) }.start()
+                onDismiss()
+            }) { Text("Save split") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+    if (adding) AccountPickerDialog("Add", s.accounts, s.outgoing(e), exclude = parts.map { it.first.id }.toSet(), onDismiss = { adding = false }) { a ->
+        parts.add(a to (if (left > 0) Money.format(left, withCurrency = false).replace(",", "") else ""))
+        adding = false
+    }
 }
 
 private val emojiChoices = listOf("🍔", "🛒", "🚌", "🏠", "💡", "📶", "💊", "📚", "👨‍👩‍👧", "❤️", "🍻", "🎉", "🎧", "🛍️", "🚀", "🤲", "✨", "💈", "🐷", "💰", "🤝", "🏦", "📱", "💵", "🎓", "🇰🇪", "🙏", "💼", "🛠️", "🎁", "⛪", "🐶", "⚽", "🎮", "☕", "🚗", "👶", "🧾")
@@ -241,6 +363,10 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
     var name by remember { mutableStateOf(original?.name ?: "") }
     var emoji by remember { mutableStateOf(original?.emoji ?: "✨") }
     var group by remember { mutableStateOf(original?.group ?: AccountGroup.DISCRETIONARY) }
+    var section by remember { mutableStateOf(original?.section) }
+    var newType by remember { mutableStateOf(false) }
+    // Your own types: every name in use, with the group it belongs to.
+    val customTypes = remember(s) { s.accounts.mapNotNull { a -> a.section?.let { it to a.group } }.distinct() }
     var budget by remember { mutableStateOf(original?.budget?.takeIf { it > 0 }?.let { Money.format(it, withCurrency = false) } ?: "") }
     var period by remember { mutableStateOf(original?.period ?: BudgetPeriod.MONTHLY) }
     var archived by remember { mutableStateOf(original?.archived ?: false) }
@@ -274,8 +400,12 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
                     Text("Type", style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (g in AccountGroup.entries.filter { it != AccountGroup.SYSTEM }) {
-                            FilterChip(selected = group == g, onClick = { group = g }, label = { Text(g.label) })
+                            FilterChip(selected = group == g && section == null, onClick = { group = g; section = null }, label = { Text(g.label) })
                         }
+                        for ((name, g) in customTypes) {
+                            FilterChip(selected = section == name, onClick = { group = g; section = name }, label = { Text("$name · ${g.label}") })
+                        }
+                        FilterChip(selected = false, onClick = { newType = true }, label = { Text("+ New type") })
                     }
                 }
                 if (group != AccountGroup.SYSTEM && group != AccountGroup.WALLET) {
@@ -303,7 +433,7 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
             TextButton(enabled = name.isNotBlank(), onClick = {
                 val cents = Money.parse(budget) ?: 0L
                 val acc = (original ?: Account(id = 0, name = name, emoji = emoji, group = group, sortOrder = s.accounts.size)).copy(
-                    name = name.trim(), emoji = emoji, group = group, budget = cents,
+                    name = name.trim(), emoji = emoji, group = group, section = section, budget = cents,
                     period = if (cents > 0) period else BudgetPeriod.NONE, archived = archived,
                 )
                 val target = Money.parse(balance)
@@ -314,6 +444,33 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
                 onDismiss()
             }) { Text("Save") }
         },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+    if (newType) NewTypeDialog(onDismiss = { newType = false }) { n, g -> section = n; group = g; newType = false }
+}
+
+/** Your own type name, filed under one of the basic groups so the maths stays right. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun NewTypeDialog(onDismiss: () -> Unit, onCreate: (String, AccountGroup) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var group by remember { mutableStateOf(AccountGroup.DISCRETIONARY) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("New type") },
+        text = {
+            Column {
+                OutlinedTextField(name, { name = it }, label = { Text("Name, e.g. Church, Business, Farm") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Gap(8)
+                Text("It works like…", style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (g in AccountGroup.entries.filter { it != AccountGroup.SYSTEM }) {
+                        FilterChip(selected = group == g, onClick = { group = g }, label = { Text(g.label) })
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(enabled = name.isNotBlank(), onClick = { onCreate(name.trim(), group) }) { Text("Create") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

@@ -71,7 +71,7 @@ private fun QuickSort(repo: MorphRepo, entryId: Long, theme: String, close: () -
                         .navigationBarsPadding()
                         .padding(20.dp)
                 ) {
-                    SortPanel(repo, snap, e, onSorted = { r, label -> burst = r.stars to label }, onSkip = null)
+                    SortPanel(repo, snap, e, onSorted = { r, label, _ -> burst = r.stars to label }, onSkip = null)
                 }
             } else if (snap != null && e == null) {
                 LaunchedEffect(Unit) { close() }

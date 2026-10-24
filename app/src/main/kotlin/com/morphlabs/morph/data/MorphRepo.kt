@@ -2,6 +2,7 @@ package com.morphlabs.morph.data
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import com.morphlabs.morph.core.budget.BudgetMove
@@ -22,6 +23,7 @@ import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.core.sms.MpesaParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.io.File
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDate
@@ -36,8 +38,9 @@ data class IngestResult(val entry: Entry, val guess: Guess?)
  */
 class MorphRepo private constructor(context: Context) {
 
+    private val appContext = context.applicationContext
     val zone: ZoneId = ZoneId.of("Africa/Nairobi")
-    private val helper = MorphDb(context.applicationContext)
+    private val helper = MorphDb(appContext)
     private val db: SQLiteDatabase by lazy { helper.writableDatabase.also { seedIfEmpty(it) } }
 
     private val _version = MutableStateFlow(0L)
@@ -149,18 +152,23 @@ class MorphRepo private constructor(context: Context) {
         if (e.status == EntryStatus.CONFIRMED && e.categoryId == accountId) return Game.Reward(0, emptyList())
         val updated = Posting.recategorize(e, accountId, EntryStatus.CONFIRMED)
         replaceLines(updated)
+        val rewardIds = mutableListOf<Long>()
+        // Changing your mind right after sorting (via Undo or Back) shouldn't farm stars.
+        val recentlySorted = undo[entryId]?.let { now - it.at < 10 * 60 * 1000 } == true
 
         val reward = when {
+            recentlySorted && !wasPending -> Game.Reward(0, listOf("Changed"))
             wasPending -> {
                 val left = s.pending.count { it.id != entryId }
                 val today = LocalDate.now(zone).toString()
                 Game.rewardForSorting(e.timestamp, now, left == 0, today in s.bonusDays)
-                    .also { if (left == 0 && today !in s.bonusDays) addReward(0, BONUS_PREFIX + today) }
+                    .also { if (left == 0 && today !in s.bonusDays) rewardIds += addReward(0, BONUS_PREFIX + today) }
             }
             e.categoryId == accountId -> Game.Reward(1, listOf("Confirmed"))
             else -> Game.Reward(1, listOf("Taught Morph"))
         }
-        if (reward.stars > 0) addReward(reward.stars, reward.reasons.joinToString(" · "), now)
+        if (reward.stars > 0) rewardIds += addReward(reward.stars, reward.reasons.joinToString(" · "), now)
+        remember(entryId, undo[entryId]?.takeIf { recentlySorted }?.before ?: e, rewardIds, now)
         changed()
         if (e.counterpartyKey != null) refilePending(e.counterpartyKey!!)
         return reward
@@ -182,6 +190,138 @@ class MorphRepo private constructor(context: Context) {
         val e = snapshot().entries.firstOrNull { it.id == entryId } ?: return Game.Reward(0, emptyList())
         val id = e.categoryId ?: return Game.Reward(0, emptyList())
         return categorize(entryId, id)
+    }
+
+    private data class UndoInfo(val before: Entry, val rewardIds: List<Long>, val at: Long)
+
+    /** What each recent sort replaced, so it can be undone. Kept in memory for the last 50 sorts. */
+    private val undo = object : LinkedHashMap<Long, UndoInfo>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, UndoInfo>?) = size > 50
+    }
+
+    private fun remember(entryId: Long, before: Entry, rewardIds: List<Long>, at: Long) {
+        val earlier = undo[entryId]
+        undo[entryId] = UndoInfo(before, (earlier?.rewardIds.orEmpty().takeIf { earlier?.before == before } ?: emptyList()) + rewardIds, at)
+    }
+
+    /** Puts an entry back exactly as it was before it was sorted, and takes back the stars. */
+    @Synchronized
+    fun undoSort(entryId: Long): Boolean {
+        val info = undo.remove(entryId)
+        val s = snapshot()
+        if (info != null) {
+            replaceLines(info.before)
+            info.rewardIds.forEach { db.delete("rewards", "id = ?", arrayOf(it.toString())) }
+        } else {
+            // App was restarted since: the best we can do is send it back to the Sort tab.
+            val e = s.entries.firstOrNull { it.id == entryId } ?: return false
+            if (e.source != EntrySource.SMS) return false
+            replaceLines(Posting.recategorize(e, s.role(SystemRole.UNCATEGORIZED), EntryStatus.NEEDS_REVIEW))
+        }
+        changed()
+        return true
+    }
+
+    /** How many other transactions are waiting from the same person/place as [entryId]. */
+    fun similarPending(entryId: Long): List<Entry> {
+        val s = snapshot()
+        val key = s.entries.firstOrNull { it.id == entryId }?.counterpartyKey ?: return emptyList()
+        return s.pending.filter { it.id != entryId && it.counterpartyKey == key }
+    }
+
+    /** Files [entryId] and every other waiting transaction from the same counterparty under [accountId]. */
+    fun categorizeAllSimilar(entryId: Long, accountId: Long): Game.Reward {
+        val others = similarPending(entryId)
+        var stars = 0
+        val reasons = linkedSetOf<String>()
+        for (id in listOf(entryId) + others.map { it.id }) {
+            val r = categorize(id, accountId)
+            stars += r.stars; reasons += r.reasons
+        }
+        return Game.Reward(stars, reasons.toList())
+    }
+
+    fun setNote(entryId: Long, note: String?) {
+        db.update("entries", ContentValues().apply { put("note", note?.trim()?.ifEmpty { null }) }, "id = ?", arrayOf(entryId.toString()))
+        changed()
+    }
+
+    /** Changes a hand-added transaction completely. M-Pesa ones keep their amount so balances stay true. */
+    fun updateManual(entryId: Long, timestamp: Long, description: String, amount: Long, fromId: Long, toId: Long) {
+        val e = snapshot().entries.firstOrNull { it.id == entryId } ?: return
+        require(e.source == EntrySource.MANUAL) { "Only hand-added transactions can change amount" }
+        val fresh = Posting.manual(timestamp, description, amount, fromId, toId)
+        replaceLines(fresh.copy(id = entryId, note = e.note))
+        db.update("entries", ContentValues().apply {
+            put("ts", timestamp); put("counterparty", fresh.counterparty); put("cp_key", fresh.counterpartyKey)
+        }, "id = ?", arrayOf(entryId.toString()))
+        changed()
+    }
+
+    /** Splits one transaction across several accounts, e.g. a supermarket bill into Groceries + Household. */
+    fun split(entryId: Long, parts: List<Pair<Long, Long>>) {
+        val s = snapshot()
+        val e = s.entries.firstOrNull { it.id == entryId } ?: return
+        replaceLines(Posting.split(e, parts, s.structural))
+        changed()
+    }
+
+    // ---- starting over & backups ----------------------------------------------------------
+
+    /**
+     * Wipes transactions (and optionally accounts) and sends you back to setup, where you can pull
+     * history again. A copy of everything is saved first, in Morph's private backups folder.
+     */
+    @Synchronized
+    fun startOver(keepAccounts: Boolean) {
+        saveLocalCopy("before-start-over")
+        val theme = theme
+        val backupUri = meta(KEY_BACKUP_URI)
+        db.beginTransaction()
+        try {
+            for (t in listOf("lines", "entries", "budget_moves", "rewards", "meta")) db.delete(t, null, null)
+            if (!keepAccounts) db.delete("accounts", null, null)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        if (!keepAccounts) seedIfEmpty(db)
+        undo.clear()
+        setMeta(KEY_THEME, theme)
+        if (backupUri != null) setMeta(KEY_BACKUP_URI, backupUri)
+        changed()
+    }
+
+    /** Where automatic backups go (a file you picked, e.g. on Google Drive). */
+    var backupUri: String?
+        get() = meta(KEY_BACKUP_URI)
+        set(v) = setMeta(KEY_BACKUP_URI, v)
+
+    val lastBackup: Long get() = meta(KEY_LAST_BACKUP)?.toLongOrNull() ?: 0L
+    val backupError: String? get() = meta(KEY_BACKUP_ERROR)
+
+    /** Writes a full backup to the chosen file. Returns null on success, or what went wrong. */
+    fun backupNow(): String? {
+        saveLocalCopy("latest")
+        val uri = backupUri ?: return "No backup file chosen yet"
+        return try {
+            val out = appContext.contentResolver.openOutputStream(Uri.parse(uri), "wt") ?: error("The file can't be opened")
+            out.use { it.write(exportJson().toByteArray()) }
+            setMeta(KEY_LAST_BACKUP, System.currentTimeMillis().toString())
+            setMeta(KEY_BACKUP_ERROR, null)
+            null
+        } catch (t: Throwable) {
+            val msg = t.message ?: t.javaClass.simpleName
+            setMeta(KEY_BACKUP_ERROR, msg)
+            msg
+        }
+    }
+
+    private fun saveLocalCopy(name: String) {
+        runCatching {
+            val dir = File(appContext.filesDir, "backups").apply { mkdirs() }
+            File(dir, "morph-$name.json").writeText(exportJson())
+        }
     }
 
     // ---- manual entries & accounts ----------------------------------------------------------
@@ -237,6 +377,7 @@ class MorphRepo private constructor(context: Context) {
             put("budget", a.budget); put("period", a.period.name)
             put("role", a.role?.name); put("hint", a.hint)
             put("archived", if (a.archived) 1 else 0); put("sort", a.sortOrder)
+            put("section", a.section?.trim()?.ifEmpty { null })
         }
         val id = if (a.id == 0L) db.insert("accounts", null, v) else {
             db.update("accounts", v, "id = ?", arrayOf(a.id.toString())); a.id
@@ -297,6 +438,7 @@ class MorphRepo private constructor(context: Context) {
                 put("ts", e.timestamp); put("description", e.description); put("status", e.status.name); put("source", e.source.name)
                 put("counterparty", e.counterparty); put("cp_key", e.counterpartyKey); put("kind", e.kind?.name); put("code", e.code)
                 put("sms", e.smsBody); put("sms_balance", e.smsBalance); put("category_id", e.categoryId); put("dedupe", dedupe)
+                put("note", e.note)
             })
             for (l in e.lines) db.insertOrThrow("lines", null, ContentValues().apply {
                 put("entry_id", id); put("account_id", l.accountId); put("amount", l.amount)
@@ -324,9 +466,8 @@ class MorphRepo private constructor(context: Context) {
         }
     }
 
-    private fun addReward(stars: Int, reason: String, ts: Long = System.currentTimeMillis()) {
+    private fun addReward(stars: Int, reason: String, ts: Long = System.currentTimeMillis()): Long =
         db.insert("rewards", null, ContentValues().apply { put("ts", ts); put("stars", stars); put("reason", reason) })
-    }
 
     private fun seedIfEmpty(d: SQLiteDatabase) {
         val count = d.rawQuery("SELECT COUNT(*) FROM accounts", null).use { it.moveToFirst(); it.getInt(0) }
@@ -344,7 +485,7 @@ class MorphRepo private constructor(context: Context) {
     }
 
     private fun load(): Snapshot {
-        val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort FROM accounts ORDER BY sort, id", null).use { c ->
+        val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort, section FROM accounts ORDER BY sort, id", null).use { c ->
             buildList {
                 while (c.moveToNext()) add(
                     Account(
@@ -352,7 +493,7 @@ class MorphRepo private constructor(context: Context) {
                         group = enumOr(c.getString(3), AccountGroup.DISCRETIONARY),
                         budget = c.getLong(4), period = enumOr(c.getString(5), BudgetPeriod.NONE),
                         role = c.str(6)?.let { r -> runCatching { SystemRole.valueOf(r) }.getOrNull() },
-                        hint = c.str(7), archived = c.getInt(8) == 1, sortOrder = c.getInt(9),
+                        hint = c.str(7), archived = c.getInt(8) == 1, sortOrder = c.getInt(9), section = c.str(10),
                     )
                 )
             }
@@ -362,7 +503,7 @@ class MorphRepo private constructor(context: Context) {
             while (c.moveToNext()) lines.getOrPut(c.getLong(0)) { mutableListOf() } += Line(c.getLong(1), c.getLong(2))
         }
         val entries = db.rawQuery(
-            "SELECT id, ts, description, status, source, counterparty, cp_key, kind, code, sms, sms_balance, category_id FROM entries ORDER BY ts, id", null
+            "SELECT id, ts, description, status, source, counterparty, cp_key, kind, code, sms, sms_balance, category_id, note FROM entries ORDER BY ts, id", null
         ).use { c ->
             buildList {
                 while (c.moveToNext()) {
@@ -379,6 +520,7 @@ class MorphRepo private constructor(context: Context) {
                             code = c.str(8), smsBody = c.str(9),
                             smsBalance = if (c.isNull(10)) null else c.getLong(10),
                             categoryId = if (c.isNull(11)) null else c.getLong(11),
+                            note = c.str(12),
                         )
                     )
                 }
@@ -409,6 +551,9 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_LAST_SMS = "last_sms_date"
         private const val BONUS_PREFIX = "inbox-zero:"
+        private const val KEY_BACKUP_URI = "backup_uri"
+        private const val KEY_LAST_BACKUP = "last_backup"
+        private const val KEY_BACKUP_ERROR = "backup_error"
 
         @Volatile private var instance: MorphRepo? = null
 

@@ -104,6 +104,7 @@ fun whenText(ts: Long, zone: ZoneId): String = timeFmt.format(Instant.ofEpochMil
 fun EntryRow(e: Entry, s: Snapshot, onClick: () -> Unit) {
     val a = e.categoryId?.let { s.byId[it] }
     val out = s.outgoing(e)
+    val split = s.categories(e).size > 1
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -116,7 +117,8 @@ fun EntryRow(e: Entry, s: Snapshot, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text(e.description, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
             Text(
-                (if (e.status == EntryStatus.NEEDS_REVIEW) "To sort · " else (a?.name?.plus(" · ") ?: "")) + whenText(e.timestamp, s.zone),
+                (if (e.status == EntryStatus.NEEDS_REVIEW) "To sort · " else if (split) "Split · " else (a?.name?.plus(" · ") ?: "")) +
+                    (e.note?.let { "“$it” · " } ?: "") + whenText(e.timestamp, s.zone),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )

@@ -6,6 +6,7 @@ import com.morphlabs.morph.core.learn.Guess
 import com.morphlabs.morph.core.learn.Observation
 import com.morphlabs.morph.core.learn.Query
 import com.morphlabs.morph.core.ledger.Balances
+import com.morphlabs.morph.core.ledger.Posting
 import com.morphlabs.morph.core.model.Account
 import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.model.EntrySource
@@ -36,12 +37,23 @@ class Snapshot(
     val pending: List<Entry> by lazy { entries.filter { it.status == EntryStatus.NEEDS_REVIEW }.sortedByDescending { it.timestamp } }
     val newestFirst: List<Entry> by lazy { entries.sortedByDescending { it.timestamp } }
 
+    /** Wallet and fee accounts: never the "what was it" side of a transaction. */
+    val structural: Set<Long> by lazy {
+        accounts.filter {
+            it.role == SystemRole.MPESA || it.role == SystemRole.TRANSACTION_COSTS ||
+                it.role == SystemRole.WITHDRAWAL_CHARGES || it.role == SystemRole.FULIZA_CHARGES
+        }.map { it.id }.toSet()
+    }
+
     fun categoryLineAmount(e: Entry): Long = e.lines.firstOrNull { it.accountId == e.categoryId }?.amount ?: 0L
+
+    /** All accounts on the category side (more than one when split). */
+    fun categories(e: Entry): List<Account> = Posting.categorySide(e, structural).mapNotNull { byId[it.accountId] }
 
     /** Money went *to* the category side, e.g. a payment or a transfer into savings. */
     fun outgoing(e: Entry): Boolean = categoryLineAmount(e) > 0 || (e.categoryId == null && e.kind?.outgoing == true)
 
-    fun amount(e: Entry): Long = abs(categoryLineAmount(e)).takeIf { it > 0 } ?: e.size()
+    fun amount(e: Entry): Long = Posting.categoryAmount(e, structural).takeIf { it > 0 } ?: e.size()
 
     fun hour(e: Entry): Int = Instant.ofEpochMilli(e.timestamp).atZone(zone).hour
 

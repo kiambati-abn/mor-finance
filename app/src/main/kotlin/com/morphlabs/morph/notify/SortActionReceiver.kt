@@ -17,6 +17,11 @@ class SortActionReceiver : BroadcastReceiver() {
         Thread {
             try {
                 val repo = MorphRepo.get(app)
+                if (intent.action == Notifier.ACTION_UNDO) {
+                    repo.undoSort(entryId)
+                    Notifier.showAgain(app, entryId)
+                    return@Thread
+                }
                 val reward = when (intent.action) {
                     Notifier.ACTION_FILE -> if (accountId >= 0) repo.categorize(entryId, accountId) else null
                     Notifier.ACTION_CONFIRM -> repo.confirm(entryId)

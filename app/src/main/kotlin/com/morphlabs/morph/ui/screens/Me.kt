@@ -1,5 +1,6 @@
 package com.morphlabs.morph.ui.screens
 
+import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,12 +52,25 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () -> Unit) {
+fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit) {
     val s = d.s
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<Account?>(null) }
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
+    var startOver by remember { mutableStateOf(false) }
+    val autoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) scope.launch {
+            val err = withContext(Dispatchers.IO) {
+                runCatching {
+                    ctx.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                }
+                repo.backupUri = uri.toString()
+                repo.backupNow()
+            }
+            Toast.makeText(ctx, err?.let { "Couldn't write there: $it" } ?: "Automatic backup is on ✓", Toast.LENGTH_LONG).show()
+        }
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) scope.launch {
@@ -110,7 +124,34 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                 }
             }
         }
-        if (d.insights.isNotEmpty()) item { SectionTitle("What your money says") }
+        item {
+            SectionTitle("Backup")
+            MorphCard {
+                Column(Modifier.padding(16.dp)) {
+                    if (repo.backupUri == null) {
+                        Text("☁️ Automatic backup is off", fontWeight = FontWeight.SemiBold)
+                        Text("Pick a file once, ideally on Google Drive. Morph updates it every day. On a new phone: install Morph → \"I have a backup\".",
+                            style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = { autoLauncher.launch("morph-backup.json") }) { Text("Turn on automatic backup") }
+                    } else {
+                        val last = repo.lastBackup
+                        Text(if (last > 0) "☁️ Last backup: ${com.morphlabs.morph.ui.components.whenText(last, s.zone)}" else "☁️ Waiting for the first backup",
+                            fontWeight = FontWeight.SemiBold)
+                        repo.backupError?.let { Text("Last try failed: $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                        Row {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    val err = withContext(Dispatchers.IO) { repo.backupNow() }
+                                    Toast.makeText(ctx, err ?: "Backed up ✓", Toast.LENGTH_SHORT).show()
+                                }
+                            }) { Text("Back up now") }
+                            TextButton(onClick = { autoLauncher.launch("morph-backup.json") }) { Text("Change file") }
+                        }
+                    }
+                }
+            }
+        }
+        if (d.insights.isNotEmpty()) item { SectionTitle("What your money says", action = "Patterns", onAction = goPatterns) }
         items(d.insights, key = { it.id }) { i -> InsightCard(i); Gap(8) }
         item {
             val month = d.monthByAccount()
@@ -129,6 +170,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             SectionTitle("Settings")
             MorphCard {
                 Column(Modifier.padding(vertical = 4.dp)) {
+                    SettingRow("🔍  Patterns: deep look at your money", goPatterns)
                     SettingRow("🗂️  Accounts & budgets", goAccounts)
                     SettingRow("📜  All transactions", goAll)
                     SettingRow("🔄  Re-check SMS inbox") {
@@ -139,6 +181,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                     }
                     SettingRow("💾  Back up to a file (Drive, etc.)") { exportLauncher.launch("morph-backup-${d.today}.json") }
                     SettingRow("♻️  Restore from a backup") { importLauncher.launch(arrayOf("application/json", "*/*")) }
+                    SettingRow("🧹  Start over…") { startOver = true }
                     HorizontalDivider()
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Theme", Modifier.weight(1f))
@@ -157,6 +200,23 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
         }
     }
     editing?.let { a -> AccountEditDialog(repo, s, a) { editing = null } }
+    if (startOver) AlertDialog(
+        onDismissRequest = { startOver = false },
+        title = { Text("Start over?") },
+        text = {
+            Text("All transactions, budget moves and stars are cleared, then Morph re-reads your M-Pesa SMS from the date you choose. " +
+                "A copy of everything is saved first.")
+        },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = { startOver = false; Thread { repo.startOver(keepAccounts = true) }.start() }) { Text("Keep my accounts & budgets") }
+                TextButton(onClick = { startOver = false; Thread { repo.startOver(keepAccounts = false) }.start() }) {
+                    Text("Wipe everything", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = { startOver = false }) { Text("Cancel") } },
+    )
     confirmRestore?.let { uri ->
         AlertDialog(
             onDismissRequest = { confirmRestore = null },

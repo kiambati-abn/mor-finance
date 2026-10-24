@@ -17,14 +17,14 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL, emoji TEXT NOT NULL, grp TEXT NOT NULL,
                 budget INTEGER NOT NULL DEFAULT 0, period TEXT NOT NULL DEFAULT 'NONE',
-                role TEXT, hint TEXT, archived INTEGER NOT NULL DEFAULT 0, sort INTEGER NOT NULL DEFAULT 0)"""
+                role TEXT, hint TEXT, archived INTEGER NOT NULL DEFAULT 0, sort INTEGER NOT NULL DEFAULT 0, section TEXT)"""
         )
         db.execSQL(
             """CREATE TABLE entries(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts INTEGER NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL, source TEXT NOT NULL,
                 counterparty TEXT, cp_key TEXT, kind TEXT, code TEXT, sms TEXT, sms_balance INTEGER,
-                category_id INTEGER, dedupe TEXT UNIQUE)"""
+                category_id INTEGER, dedupe TEXT UNIQUE, note TEXT)"""
         )
         db.execSQL(
             """CREATE TABLE lines(
@@ -44,11 +44,15 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        // Future schema changes go here, one `if (oldVersion < N)` block per version.
+        // One block per version. Only ever add; never drop user data.
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE entries ADD COLUMN note TEXT")
+            db.execSQL("ALTER TABLE accounts ADD COLUMN section TEXT")
+        }
     }
 
     companion object {
         const val NAME = "morph.db"
-        const val VERSION = 1
+        const val VERSION = 2
     }
 }

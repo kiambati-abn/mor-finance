@@ -1,6 +1,7 @@
 package com.morphlabs.morph
 
 import android.app.Application
+import com.morphlabs.morph.backup.BackupJob
 import com.morphlabs.morph.data.MorphDb
 import com.morphlabs.morph.notify.Notifier
 import java.io.File
@@ -11,6 +12,7 @@ class MorphApp : Application() {
         super.onCreate()
         Notifier.ensureChannels(this)
         backupDatabaseOnUpdate()
+        BackupJob.schedule(this)
     }
 
     /**

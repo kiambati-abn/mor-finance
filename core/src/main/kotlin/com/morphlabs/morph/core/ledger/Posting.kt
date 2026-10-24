@@ -117,6 +117,41 @@ object Posting {
         )
     }
 
+    /**
+     * The "what was it" side of an entry: the category line plus any split parts next to it.
+     * [structural] are the wallet and fee accounts, which are never part of the category side.
+     */
+    fun categorySide(entry: Entry, structural: Set<Long>): List<Line> {
+        val cat = entry.lines.firstOrNull { it.accountId == entry.categoryId } ?: return emptyList()
+        val sign = java.lang.Long.signum(cat.amount)
+        return entry.lines.filter { java.lang.Long.signum(it.amount) == sign && it.accountId !in structural }
+    }
+
+    /** Size of the category side: what you'd call "the amount" of this transaction. */
+    fun categoryAmount(entry: Entry, structural: Set<Long>): Long =
+        kotlin.math.abs(categorySide(entry, structural).sumOf { it.amount })
+
+    /**
+     * Splits the category side into [parts] (account id to amount, positive cents), e.g. a Naivas
+     * receipt into Groceries 1,500 + Household 500. The parts must add up to the original amount,
+     * so wallet balances never change. The biggest part becomes the entry's main category.
+     */
+    fun split(entry: Entry, parts: List<Pair<Long, Long>>, structural: Set<Long>): Entry {
+        val side = categorySide(entry, structural)
+        require(side.isNotEmpty()) { "Nothing to split" }
+        val total = kotlin.math.abs(side.sumOf { it.amount })
+        val merged = parts.filter { it.second > 0 }.groupBy { it.first }.map { (id, ps) -> id to ps.sumOf { it.second } }
+        require(merged.isNotEmpty() && merged.sumOf { it.second } == total) { "Parts must add up to ${Money.format(total)}" }
+        val sign = java.lang.Long.signum(side.first().amount)
+        val kept = entry.lines.filter { it !in side }
+        val main = merged.maxBy { it.second }.first
+        return entry.copy(
+            lines = kept + merged.map { (id, amt) -> Line(id, sign * amt) },
+            categoryId = main,
+            status = EntryStatus.CONFIRMED,
+        )
+    }
+
     fun describe(sms: MpesaSms, outgoing: Boolean = sms.outgoing): String {
         val who = sms.counterparty?.let(::titleCase)
         return when (sms.kind) {

@@ -32,6 +32,7 @@ object Notifier {
     const val EXTRA_ACCOUNT = "account_id"
     const val ACTION_FILE = "com.morphlabs.morph.FILE"
     const val ACTION_CONFIRM = "com.morphlabs.morph.CONFIRM"
+    const val ACTION_UNDO = "com.morphlabs.morph.UNDO"
 
     private const val GOLD = 0xFFE8A020.toInt()
 
@@ -120,10 +121,17 @@ object Notifier {
             .setContentTitle(if (reward.stars > 0) "+${reward.stars} ⭐  ${reward.reasons.joinToString(" · ")}" else "Saved")
             .setContentText(text.ifEmpty { "${level.emoji} ${level.name} · ${s.stars} ⭐" })
             .setSubText("${level.emoji} ${s.stars} ⭐")
-            .setTimeoutAfter(6_000)
+            .setTimeoutAfter(8_000)
             .setOnlyAlertOnce(true)
             .setAutoCancel(true)
+            .addAction(action(context, "↩ Undo", undoIntent(context, entryId)))
         notify(context, entryId, b.build())
+    }
+
+    /** After an undo, ask the question again. */
+    fun showAgain(context: Context, entryId: Long) {
+        val e = MorphRepo.get(context).snapshot().entries.firstOrNull { it.id == entryId } ?: return
+        if (e.status == EntryStatus.NEEDS_REVIEW) showSort(context, e) else cancel(context, entryId)
     }
 
     fun cancel(context: Context, entryId: Long) {
@@ -153,6 +161,13 @@ object Notifier {
         PendingIntent.getBroadcast(
             context, requestCode(entryId, 8),
             Intent(context, SortActionReceiver::class.java).setAction(ACTION_CONFIRM).putExtra(EXTRA_ENTRY, entryId),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+    private fun undoIntent(context: Context, entryId: Long): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, requestCode(entryId, 7),
+            Intent(context, SortActionReceiver::class.java).setAction(ACTION_UNDO).putExtra(EXTRA_ENTRY, entryId),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 

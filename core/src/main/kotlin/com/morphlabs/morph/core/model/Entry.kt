@@ -37,6 +37,8 @@ data class Entry(
     val categoryId: Long? = null,
     /** M-Pesa balance the SMS reported after this transaction. */
     val smsBalance: Long? = null,
+    /** Your own words about it ("lunch with Ann"). */
+    val note: String? = null,
 ) {
     init {
         require(lines.sumOf { it.amount } == 0L) { "Entry '$description' is unbalanced: $lines" }

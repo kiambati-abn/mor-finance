@@ -55,7 +55,33 @@ Also built, from standard Safaricom wording, but **still to be confirmed with re
 withdraw, deposit, airtime, Fuliza draw/repay, M-Shwari in/out, reversal.
 Anything with an M-Pesa code and a balance in unknown wording is still recorded; the balance change tells Morph which way the money went.
 
-## Later (not in v0.1)
+## Flexibility (v0.2)
+
+- **Accounts:** add, rename, re-emoji, re-type, budget, archive, or correct the balance of any account.
+- **Your own types:** create a name ("Church") and pick which basic group it behaves like (here, Discretionary). The money maths always uses the basic group.
+- **Transactions:** change the category, add a note, split across accounts, delete. You can edit the amount, date, from and to only on entries you added by hand. An M-Pesa entry's amount always comes from the SMS, so balances stay true.
+- **Sorting:** Undo (bar at the bottom, and on the reward notification), ← Previous to step back through what you just sorted, Skip moves an item to the end, "Same for all N from X", search plus recent accounts in "Something else…", and an optional note.
+- **Start over:** Me → Start over. Either keep accounts and budgets or wipe everything; you then go back to setup and re-import history. A copy is saved first.
+
+## Backups
+
+- **Automatic:** Me → Backup → pick a file once (choose Google Drive in the picker). Morph rewrites it about once a day and whenever you open the app and the last backup is over a day old. If it fails, you get a notification.
+- **Manual:** Me → Back up to a file / Restore from a backup.
+- **New phone:** install the APK, tap **I have a backup** on the first screen, pick the file, allow SMS again, and continue. The backup link is per phone, so turn automatic backup on again on the new one.
+
+## Patterns screen
+
+| Section | Question it answers |
+|---|---|
+| Spending by month | Am I spending more over time? |
+| This month vs your usual | Which category is off this month? (fair: same number of days from the last 3 months) |
+| When you spend | Which days and times cost me most? |
+| Things you pay regularly | What goes out on autopilot, and what does it cost per month? |
+| Top people & places | Who and where gets my money? |
+| Unusual spends | What was far bigger than normal for its category (3× the median)? |
+| After money comes in | How much of what arrives is gone within 3 days? |
+
+## Later
 
 - Hustler Fund / HELB messages: confirm the exact wording from real SMS and add interest/fee splitting.
 - M-Pesa statement PDF import for older history.

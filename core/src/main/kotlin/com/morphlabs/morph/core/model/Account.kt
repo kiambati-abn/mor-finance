@@ -40,7 +40,11 @@ data class Account(
     val hint: String? = null,
     val archived: Boolean = false,
     val sortOrder: Int = 0,
+    /** Your own type name ("Church", "Business"), shown instead of the group's name. The group still decides the maths. */
+    val section: String? = null,
 ) {
+    val typeLabel: String get() = section ?: group.label
+
     val type: AccountType get() = group.type
 
     /** Accounts a transaction can be filed under. Uncategorized and Opening Balance are bookkeeping only. */

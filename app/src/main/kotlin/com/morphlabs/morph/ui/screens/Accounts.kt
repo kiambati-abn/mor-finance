@@ -50,10 +50,11 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         BackHeader("Accounts & budgets", onBack) { TextButton(onClick = { creating = true }) { Text("+ Add") } }
         LazyColumn(Modifier.padding(horizontal = 16.dp)) {
-            for (g in AccountGroup.entries.filter { it != AccountGroup.SYSTEM }) {
-                val list = s.accounts.filter { it.group == g && (showArchived || !it.archived) }
-                if (list.isEmpty()) continue
-                item(key = "h" + g.name) { SectionTitle(g.label) }
+            val sections = AccountGroup.entries.filter { it != AccountGroup.SYSTEM }.flatMap { g ->
+                s.accounts.filter { it.group == g && (showArchived || !it.archived) }.groupBy { it.typeLabel }.toList()
+            }
+            for ((label, list) in sections) {
+                item(key = "h$label") { SectionTitle(label) }
                 items(list, key = { it.id }) { a ->
                     MorphCard(Modifier.padding(bottom = 6.dp), onClick = { editing = a }) {
                         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
