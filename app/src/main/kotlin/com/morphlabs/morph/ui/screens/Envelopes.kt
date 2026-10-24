@@ -33,6 +33,7 @@ import com.morphlabs.morph.ui.components.MorphCard
 import com.morphlabs.morph.ui.components.SectionTitle
 import com.morphlabs.morph.ui.theme.LocalMorph
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
     val s = d.s
@@ -41,7 +42,10 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
     var editing by remember { mutableStateOf<Envelope?>(null) }
     var moving by remember { mutableStateOf<Envelope?>(null) }
     val period = if (daily) BudgetPeriod.DAILY else BudgetPeriod.MONTHLY
-    val list = d.envelopes.filter { it.period == period }
+    val find = remember { FindState() }
+    val all = d.envelopes.filter { it.period == period }
+    val list = all.filter { e -> find.matches(e.account, e.over || (e.isLimit && e.progress > 0.8f)) }
+        .let { l -> find.affordCents?.let { amt -> l.sortedByDescending { it.left - amt } } ?: l }
     val limits = list.filter { it.isLimit }
     val targets = list.filter { !it.isLimit }
 
@@ -74,7 +78,9 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
                 }
             }
         }
-        if (list.isEmpty()) item {
+        if (all.isNotEmpty()) stickyHeader(key = "find") { FindBar(find) }
+        if (all.isNotEmpty() && list.isEmpty()) item { Text("Nothing matches.", modifier = Modifier.padding(16.dp)) }
+        if (all.isEmpty()) item {
             Gap(24)
             MorphCard(onClick = goAccounts) {
                 Column(Modifier.padding(20.dp)) {
@@ -85,7 +91,7 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
             }
         }
         if (limits.isNotEmpty()) item { SectionTitle("Spending limits") }
-        items(limits, key = { "l" + it.account.id }) { e -> EnvelopeRow(e, { editing = e }, { moving = e }) }
+        items(limits, key = { "l" + it.account.id }) { e -> EnvelopeRow(e, { editing = e }, { moving = e }, find.affordCents) }
         if (targets.isNotEmpty()) item { SectionTitle("Savings, debts & income targets") }
         items(targets, key = { "t" + it.account.id }) { e -> EnvelopeRow(e, { editing = e }, null) }
         item { Gap(40) }
@@ -95,7 +101,7 @@ fun EnvelopesScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit) {
 }
 
 @Composable
-private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?) {
+private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?, afford: Long? = null) {
     val m = LocalMorph.current
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onEdit) {
         Column(Modifier.padding(14.dp)) {
@@ -103,6 +109,7 @@ private fun EnvelopeRow(e: Envelope, onEdit: () -> Unit, onMove: (() -> Unit)?) 
                 Text(e.account.label, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                 Text("${Money.format(e.used, withCurrency = false)} / ${Money.format(e.available, withCurrency = false)}", style = MaterialTheme.typography.bodyMedium)
             }
+            if (e.isLimit) AffordLine(e.left, afford)
             Gap(8)
             EnvelopeBar(e)
             Gap(6)

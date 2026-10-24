@@ -43,19 +43,18 @@ class BackupJob : JobService() {
             )
         }
 
-        /** Backs up if there's a file chosen; tells you (once) when it can't. */
+        /** Backs up if there's a file chosen and it's due; tells you when it can't. */
         fun runBackup(context: Context): String? {
             val repo = MorphRepo.get(context)
-            if (repo.backupUri == null || !repo.onboarded) return null
+            if (repo.backupUri == null || !repo.onboarded || !repo.backupDue) return null
             val error = repo.backupNow()
             if (error != null) notifyFailure(context)
             return error
         }
 
-        /** Runs a backup now if the last one is more than a day old. Called when the app opens. */
+        /** Runs a backup now if one is due by your chosen frequency. Called when the app opens. */
         fun backupIfDue(context: Context) {
-            val repo = MorphRepo.get(context)
-            if (repo.backupUri != null && System.currentTimeMillis() - repo.lastBackup > DAY) runBackup(context)
+            runBackup(context)
         }
 
         private fun notifyFailure(context: Context) {

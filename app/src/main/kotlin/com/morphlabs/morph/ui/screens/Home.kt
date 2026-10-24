@@ -40,7 +40,11 @@ import com.morphlabs.morph.core.model.Entry
 import com.morphlabs.morph.core.money.Money
 import com.morphlabs.morph.data.MorphRepo
 import com.morphlabs.morph.ui.Dashboard
+import com.morphlabs.morph.sms.InboxImporter
 import com.morphlabs.morph.ui.components.BarChart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.morphlabs.morph.ui.components.EntryRow
 import com.morphlabs.morph.ui.components.Gap
 import com.morphlabs.morph.ui.components.MorphCard
@@ -49,12 +53,26 @@ import com.morphlabs.morph.ui.components.SectionTitle
 import com.morphlabs.morph.ui.components.StatTile
 import com.morphlabs.morph.ui.theme.LocalMorph
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var refreshing by remember { mutableStateOf(false) }
+    fun refresh() {
+        if (refreshing) return
+        refreshing = true
+        scope.launch {
+            val r = withContext(Dispatchers.IO) { InboxImporter.refresh(ctx) }
+            refreshing = false
+            android.widget.Toast.makeText(ctx, if (r.added > 0) "Found ${r.added} new" else "Up to date ✓", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = refreshing, onRefresh = { refresh() }, modifier = Modifier.fillMaxSize()) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        item { Header(d) }
+        item { Header(d, refreshing) { refresh() } }
         item { Hero(d) }
         if ((d.toAssign ?: 0) > 0) item {
             Gap()
@@ -105,6 +123,23 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                 StatTile("Yesterday", d.spentYesterday, Modifier.weight(1f))
                 StatTile("7 days", d.spent7, Modifier.weight(1f))
                 StatTile("30 days", d.spent30, Modifier.weight(1f))
+            }
+            if (d.avgDay > 0) {
+                Gap(8)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("Avg / day", d.avgDay, Modifier.weight(1f))
+                    StatTile("Avg / week", d.avgWeek, Modifier.weight(1f))
+                    StatTile("Avg / month", d.avgMonth, Modifier.weight(1f))
+                }
+                Text(
+                    "Averages over the last ${d.avgBasis} days. " + when {
+                        d.spentToday > d.avgDay * 3 / 2 -> "Today is well above your usual day."
+                        d.spentToday in 1..d.avgDay -> "Today is below your usual day. 👍"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
         item {
@@ -167,15 +202,20 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
         }
         item { Gap(88) }
     }
+    }
     open?.let { e -> EntryDialog(repo, s, e) { open = null } }
 }
 
 @Composable
-private fun Header(d: Dashboard) {
+private fun Header(d: Dashboard, refreshing: Boolean, onRefresh: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Image(painterResource(R.drawable.morph_wing), contentDescription = null, modifier = Modifier.height(36.dp))
         Spacer(Modifier.width(8.dp))
         Text("Morph", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
+        Text(
+            if (refreshing) "⏳" else "↻", fontSize = 22.sp, color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onRefresh).padding(horizontal = 8.dp, vertical = 2.dp),
+        )
         if (d.streak > 0) Pill("🔥 ${d.streak}")
         Spacer(Modifier.width(6.dp))
         Pill("${d.level.emoji} ${d.stars}⭐")

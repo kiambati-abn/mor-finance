@@ -52,6 +52,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Envelopes: every shilling has a job, and each envelope shows what's left. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAccounts: () -> Unit) {
     val s = d.s
@@ -60,6 +61,9 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
     val list = remember(s) { book.envelopes(d.today) }
     val toAssign = remember(s) { book.toAssign(d.today) }
     var open by remember { mutableStateOf<EnvelopeBook.Envelope?>(null) }
+    val find = remember { FindState() }
+    val shown = list.filter { e -> find.matches(e.account, e.overspent || (e.target > 0 && e.progressLeft < 0.2f)) }
+    fun spendable(e: EnvelopeBook.Envelope) = if (e.todayLeft != null) minOf(e.todayLeft!!, e.left) else e.left
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         item {
@@ -97,10 +101,14 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
                 }
             }
         }
-        val groups = list.groupBy { it.account.typeLabel }
+        if (list.isNotEmpty()) stickyHeader(key = "find") { FindBar(find) }
+        if (list.isNotEmpty() && shown.isEmpty()) item { Text("Nothing matches.", modifier = Modifier.padding(16.dp)) }
+        // While checking an amount, the envelopes that can afford it come first.
+        val ordered = find.affordCents?.let { amt -> shown.sortedByDescending { spendable(it) - amt } } ?: shown
+        val groups = if (find.affordCents != null) mapOf("Can it cover ${Money.format(find.affordCents!!)}?" to ordered) else ordered.groupBy { it.account.typeLabel }
         for ((label, envs) in groups) {
             item(key = "h$label") { SectionTitle(label) }
-            items(envs, key = { it.account.id }) { e -> EnvelopeCard(e) { open = e } }
+            items(envs, key = { it.account.id }) { e -> EnvelopeCard(e, find.affordCents?.let { spendable(e) to it }) { open = e } }
         }
         item { Gap(40) }
     }
@@ -108,7 +116,7 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
 }
 
 @Composable
-private fun EnvelopeCard(e: EnvelopeBook.Envelope, onClick: () -> Unit) {
+private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = null, onClick: () -> Unit) {
     val m = LocalMorph.current
     val daily = e.account.period == BudgetPeriod.DAILY
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onClick) {
@@ -124,6 +132,7 @@ private fun EnvelopeCard(e: EnvelopeBook.Envelope, onClick: () -> Unit) {
                     Text(if (daily) "left today" else "left", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            afford?.let { (left, amt) -> AffordLine(left, amt) }
             Gap(6)
             LinearProgressIndicator(
                 progress = { e.progressLeft },

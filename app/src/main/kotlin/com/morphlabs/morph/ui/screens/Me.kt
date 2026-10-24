@@ -144,6 +144,13 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                         Text(if (last > 0) "☁️ Last backup: ${com.morphlabs.morph.ui.components.whenText(last, s.zone)}" else "☁️ Waiting for the first backup",
                             fontWeight = FontWeight.SemiBold)
                         repo.backupError?.let { Text("Last try failed: $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                        Gap(6)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("How often", style = MaterialTheme.typography.labelLarge)
+                            for ((n, l) in listOf(1 to "Daily", 7 to "Weekly", 30 to "Monthly")) {
+                                FilterChip(selected = repo.backupEveryDays == n, onClick = { repo.backupEveryDays = n }, label = { Text(l) })
+                            }
+                        }
                         Row {
                             TextButton(onClick = {
                                 scope.launch {

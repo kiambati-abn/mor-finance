@@ -69,6 +69,16 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                         FilterChip(selected = days == d, onClick = { days = d }, label = { Text(l) })
                     }
                 }
+                MorphCard { Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val window = remember(p, days) { p.byWeekday(today, days).sumOf { it.total } / 7 }
+                    for ((l, v) in listOf("Avg / day" to window, "Avg / week" to window * 7, "Avg / month" to (window * 30.44).toLong())) {
+                        Column(Modifier.weight(1f)) {
+                            Text(l, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(Money.format(v), fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } }
+                Text("Averages over the period above.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 SectionTitle("Spending by month")
                 MorphCard { Column(Modifier.padding(16.dp)) {
                     BarChart(monthly.map { it.label to it.total }) { i ->

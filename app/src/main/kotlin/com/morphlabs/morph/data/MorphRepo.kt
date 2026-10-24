@@ -369,6 +369,15 @@ class MorphRepo private constructor(context: Context) {
         set(v) = setMeta(KEY_BACKUP_URI, v)
 
     val lastBackup: Long get() = meta(KEY_LAST_BACKUP)?.toLongOrNull() ?: 0L
+
+    /** How often automatic backup runs, in days: 1 (daily, default), 7 (weekly) or 30 (monthly). */
+    var backupEveryDays: Int
+        get() = meta(KEY_BACKUP_EVERY)?.toIntOrNull() ?: 1
+        set(v) = setMeta(KEY_BACKUP_EVERY, v.toString())
+
+    /** True when the chosen interval has passed since the last backup (a little early is fine). */
+    val backupDue: Boolean
+        get() = System.currentTimeMillis() - lastBackup > backupEveryDays * 24L * 3600 * 1000 - 2L * 3600 * 1000
     val backupError: String? get() = meta(KEY_BACKUP_ERROR)
 
     /** Writes a full backup to the chosen file. Returns null on success, or what went wrong. */
@@ -702,6 +711,7 @@ class MorphRepo private constructor(context: Context) {
         private const val BONUS_PREFIX = "inbox-zero:"
         private const val KEY_BACKUP_URI = "backup_uri"
         private const val KEY_AUTOPILOT = "autopilot"
+        private const val KEY_BACKUP_EVERY = "backup_every_days"
         private const val KEY_ENVELOPES_START = "envelopes_start"
         private const val KEY_BUDGET_VIEW = "budget_view"
         private const val KEY_CASH_DONE = "cash_done"

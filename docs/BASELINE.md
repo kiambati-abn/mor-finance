@@ -37,6 +37,13 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 - **Patterns → Spending by month:** tap a month to see what changed against your usual month, e.g. "▲ 🎉 Fun +Ksh 3,000 (mostly CLUB) ▼ 🚌 Transport −Ksh 800".
 - Reasons are worked out from what you've sorted; you never type them. Notes you add to transactions show up there.
 
+## Finding and checking budgets
+
+- **Budgets tab:** a search box and type filters (All · Spending · Savings & debts · Running low) stay pinned at the top while you scroll.
+- **Can I afford?** Type an amount and every budget shows ✓ "Ksh 400 left after" or ✗ "Short by Ksh 200". The ones that can cover it come first. Daily envelopes check against what's left *today*.
+- **Averages:** Home shows average spending per day, week and month (over the last 90 days, or since you started). Patterns shows the same for the period you pick.
+- **Refresh:** pull down on Home, or tap ↻. Morph re-reads the last 3 days of M-Pesa SMS, re-matches the M-Pesa balance (including the last half hour), and recalculates.
+
 ## Cash
 
 - A withdrawal moves money from M-Pesa to Cash; the fee goes to Withdrawal charges.
@@ -98,7 +105,7 @@ Anything with an M-Pesa code and a balance in unknown wording is still recorded;
 
 ## Backups
 
-- **Automatic:** Me → Backup → pick a file once (choose Google Drive in the picker). Morph rewrites it about once a day and whenever you open the app and the last backup is over a day old. If it fails, you get a notification.
+- **Automatic:** Me → Backup → pick a file once (choose Google Drive in the picker), then choose how often: daily, weekly or monthly. Morph rewrites it on that schedule and whenever you open the app and the last backup is over a day old. If it fails, you get a notification.
 - **Manual:** Me → Back up to a file / Restore from a backup.
 - **New phone:** install the APK, tap **I have a backup** on the first screen, pick the file, allow SMS again, and continue. The backup link is per phone, so turn automatic backup on again on the new one.
 

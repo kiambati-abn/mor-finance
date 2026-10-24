@@ -19,6 +19,17 @@ class Dashboard(val s: Snapshot, val today: LocalDate) {
     val spentYesterday = spending.total(start(today.minusDays(1)), start(today))
     val spent7 = spending.total(start(today.minusDays(6)), start(today.plusDays(1)))
     val spent30 = spending.total(start(today.minusDays(29)), start(today.plusDays(1)))
+    /** Average spending, measured over the last 90 days (or since your first transaction, if sooner). */
+    private val avgWindow: Long = run {
+        val first = s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
+        val days = first?.let { java.time.temporal.ChronoUnit.DAYS.between(s.zone.let { z -> java.time.Instant.ofEpochMilli(it).atZone(z).toLocalDate() }, today) + 1 } ?: 1
+        days.coerceIn(1, 90)
+    }
+    val avgDay: Long = spending.total(start(today.minusDays(avgWindow - 1)), start(today.plusDays(1))) / avgWindow
+    val avgWeek: Long = avgDay * 7
+    val avgMonth: Long = (avgDay * 30.44).toLong()
+    val avgBasis: Long get() = avgWindow
+
     val receivedThisMonth = spending.income(start(today.withDayOfMonth(1)), start(today.plusDays(1)))
 
     private val budgets = Budgets(s.zone)

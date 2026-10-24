@@ -17,6 +17,17 @@ object InboxImporter {
     fun hasPermission(context: Context): Boolean =
         context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * "Refresh": re-reads the last 3 days of M-Pesa SMS (in case one slipped past), re-matches
+     * the M-Pesa balance including the last half hour, and recalculates everything.
+     */
+    fun refresh(context: Context): Result {
+        val repo = MorphRepo.get(context)
+        val r = import(context, maxOf(0L, repo.lastSmsDate - 3L * 24 * 3600 * 1000))
+        repo.reconcileMpesa(force = true)
+        return r
+    }
+
     /** @param sinceMillis only messages newer than this; 0 for everything. */
     fun import(context: Context, sinceMillis: Long, onProgress: (Int) -> Unit = {}): Result {
         if (!hasPermission(context)) return Result(0, 0, 0)
