@@ -31,6 +31,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.morphlabs.morph.ui.theme.LocalMorph
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.graphics.graphicsLayer
@@ -276,10 +278,18 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
         }
     }
 
-    MorphCard {
-        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(if (out) "Money out" else "Money in", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(Money.format(s.amount(e)), fontSize = 40.sp, fontWeight = FontWeight.Black)
+    // Direction at a glance: green band and + for money in, red band and − for money out.
+    val dirColor = if (out) LocalMorph.current.bad else LocalMorph.current.good
+    MorphCard(Modifier.border(2.dp, dirColor.copy(alpha = 0.6f), RoundedCornerShape(20.dp))) {
+        Row(
+            Modifier.fillMaxWidth().background(dirColor).padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(if (out) "⬆  MONEY OUT" else "⬇  MONEY IN", color = androidx.compose.ui.graphics.Color.White,
+                fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, style = MaterialTheme.typography.titleSmall)
+        }
+        Column(Modifier.fillMaxWidth().background(dirColor.copy(alpha = 0.06f)).padding(start = 20.dp, end = 20.dp, bottom = 20.dp, top = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text((if (out) "− " else "+ ") + Money.format(s.amount(e)), fontSize = 40.sp, fontWeight = FontWeight.Black, color = dirColor)
             Text(e.counterparty ?: e.description, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
             Text(whenText(e.timestamp, s.zone), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             val fee = e.lines.filter { it.amount > 0 && s.byId[it.accountId]?.role in feeRoles }.sumOf { it.amount }
@@ -301,7 +311,7 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
         }
     }
     Gap(16)
-    Text("What was it?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(if (out) "What did this money go to?" else "Where did this money come from?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     guess.suggestions.firstOrNull()?.reason?.takeIf { it.isNotEmpty() }?.let {
         Text("💡 $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
