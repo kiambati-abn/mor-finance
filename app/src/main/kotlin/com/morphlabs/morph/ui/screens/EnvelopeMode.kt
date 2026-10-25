@@ -143,7 +143,7 @@ private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = n
                 Text("${Money.format(e.left)} in envelope for the rest of the month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else com.morphlabs.morph.ui.components.SpentLeft(
                 e.used, e.left, maxOf(e.assigned, e.target), level,
-                spentWord = if (spending) "Spent" else if (e.account.group == com.morphlabs.morph.core.model.AccountGroup.DEBT) "Repaid" else "Saved",
+                spentWord = if (spending) "Spent" else if (e.account.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) "Repaid" else "Saved",
                 leftWord = if (spending) "Left" else "In envelope",
             )
         }

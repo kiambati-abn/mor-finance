@@ -15,7 +15,8 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 | Wallets | Asset | M-Pesa, Cash, Bank, Airtel Money |
 | Savings | Asset | M-Shwari, Savings, **Chama** |
 | Owed to me | Asset | Friends owe me |
-| Debts | Liability | Fuliza, Hustler Fund, HELB, I owe friends |
+| Short-term liabilities | Liability | Fuliza, Hustler Fund, I owe friends (due within about a year) |
+| Long-term liabilities | Liability | HELB, mortgages, car or long bank loans (paid back over years) |
 | Income | Income | Salary, Business & hustles, Gifts |
 | Fixed / Discretionary | Expense | Food, Rent, Transport… / Love, Fun, Gadgets… |
 | System | Equity | Uncategorized (waiting to be sorted), Opening balance |
@@ -83,7 +84,7 @@ of Ksh 2,000 · 65%      🟡 Getting low
 
 ## Accounts, one tap away
 
-- Home has **🔍 Find an account…**, which opens Accounts. Search by name, or filter: Spending · Savings · Debts · Wallets · Income · With budget.
+- Home has **🔍 Find an account…**, which opens Accounts. Search by name, or filter: Spending · Savings · Liabilities · Wallets · Income · With budget.
 - A spending account with a budget shows **"Ksh 700 left"** in its traffic-light colour, a thin bar and "Spent Ksh 1,300 of 2,000 · 65%". Others show this month's spending, money in, or their balance.
 - The Budgets summary shows what's left (large), a bar and "Spent X of Y · N% used". The envelopes header shows what's left in spending envelopes and % used.
 

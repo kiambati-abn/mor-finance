@@ -289,7 +289,7 @@ private fun Balances(repo: MorphRepo, s: Snapshot, done: () -> Unit) {
     val values = remember { mutableStateMapOf<Long, String>() }
     val asks = s.accounts.filter {
         !it.archived && it.role != SystemRole.MPESA && it.role != SystemRole.FULIZA &&
-            (it.group == AccountGroup.WALLET || it.group == AccountGroup.SAVINGS || it.group == AccountGroup.OWED_TO_ME || it.group == AccountGroup.DEBT)
+            (it.group == AccountGroup.WALLET || it.group == AccountGroup.SAVINGS || it.group == AccountGroup.OWED_TO_ME || it.type == com.morphlabs.morph.core.model.AccountType.LIABILITY)
     }
     Title("What do you have, and owe, today?", "Fill in what applies; leave the rest empty. You can change these any time.")
     MorphCard {
@@ -303,7 +303,7 @@ private fun Balances(repo: MorphRepo, s: Snapshot, done: () -> Unit) {
         AmountField(
             value = values[a.id] ?: "",
             onChange = { values[a.id] = it },
-            label = "${a.emoji} ${a.name}" + if (a.group == AccountGroup.DEBT) " (I owe)" else "",
+            label = "${a.emoji} ${a.name}" + if (a.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) " (I owe)" else "",
             // ➜ on the keyboard jumps to the next balance; ✓ on the last one closes it.
             imeAction = if (a == asks.last()) androidx.compose.ui.text.input.ImeAction.Done else androidx.compose.ui.text.input.ImeAction.Next,
         )

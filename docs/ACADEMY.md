@@ -9,11 +9,11 @@ A daily 2-minute game inside Morph for understanding money deeply: personal fina
 
 ## How it plays (v2: a lifetime game)
 
-Open it from the **💣 Today's Bomb** card on Home, or **Me → 🥋 Money Dojo**. With fun names off, these are **Today's lesson** and **Morph Academy**.
+Open it from the **Today's lesson** card on Home, or **Me → Morph Academy**. With playful wording on, these are **💣 Today's Bomb** and **🥋 Money Dojo**.
 
 - **12 areas, one theme a day.** The areas rotate, so each comes round about every 12 days:
 
-  | Area (fun name) | Plain name |
+  | Area (playful name) | Standard name (default) |
   |---|---|
   | 🧱 Pesa 101 | Money basics |
   | 👹 Madeni Monsters | Debt |
@@ -50,7 +50,7 @@ Open it from the **💣 Today's Bomb** card on Home, or **Me → 🥋 Money Dojo
   - Money IQ (0–100).
   - A level badge per area, with a celebration when you level up.
   - Your 🦋 freedom stage.
-- **Fun names** run through the whole app: Pockets, Stash, IOUs to chase, Madeni Monsters, Money Rain, Must-pays, Treats & extras, Bahasha, mysteries to solve, jobless shillings, Money X-ray. Turn them off in **Me → Look & feel**. Search always understands both the fun and the plain names.
+- **Names are standard by default**, so anyone you share Morph with understands it. Account types always use standard accounting names (Wallets, Savings, Short-term liabilities, Long-term liabilities, Income…). **Me → Look & feel → 😄 Playful wording** turns on fun names for the game and a few screens: 💣 Today's Bomb, 🥋 Money Dojo, area names like Madeni Monsters, Bahasha, mysteries to solve, jobless shillings, Money X-ray.
 
 Each area's full outline and sources are in [docs/academy/](academy/).
 

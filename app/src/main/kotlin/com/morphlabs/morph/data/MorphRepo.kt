@@ -607,9 +607,9 @@ class MorphRepo private constructor(context: Context) {
         return if (first) LESSON_BONUS else 0
     }
 
-    /** Fun names across the app (on unless you turn them off). */
+    /** Playful wording (off unless you turn it on). */
     var playful: Boolean
-        get() = meta(KEY_PLAYFUL) != "0"
+        get() = meta(KEY_PLAYFUL) == "1"
         set(on) { setMeta(KEY_PLAYFUL, if (on) "1" else "0"); com.morphlabs.morph.core.model.Naming.playful = on; changed() }
 
     /** Called when you leave the Academy, so stars from cards show up everywhere. */
@@ -804,7 +804,7 @@ class MorphRepo private constructor(context: Context) {
     }
 
     private fun load(): Snapshot {
-        com.morphlabs.morph.core.model.Naming.playful = meta(KEY_PLAYFUL) != "0"
+        com.morphlabs.morph.core.model.Naming.playful = meta(KEY_PLAYFUL) == "1"
         val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort, section FROM accounts ORDER BY sort, id", null).use { c ->
             buildList {
                 while (c.moveToNext()) add(

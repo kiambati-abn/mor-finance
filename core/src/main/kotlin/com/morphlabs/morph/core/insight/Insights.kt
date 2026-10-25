@@ -198,7 +198,7 @@ class Insights(private val accounts: List<Account>, private val entries: List<En
         val by = spending.byAccount(start, end)
         val needs = by.filterKeys { byId[it]?.group == AccountGroup.FIXED }.values.sum()
         val wants = by.filterKeys { byId[it]?.group == AccountGroup.DISCRETIONARY }.values.sum()
-        val saveIds = accounts.filter { it.group == AccountGroup.SAVINGS || it.group == AccountGroup.DEBT }.map { it.id }.toSet()
+        val saveIds = accounts.filter { it.group == AccountGroup.SAVINGS || it.type == com.morphlabs.morph.core.model.AccountType.LIABILITY }.map { it.id }.toSet()
         val saved = entries.filter { it.timestamp in start until end && it.source != EntrySource.SYSTEM && it.kind != TxKind.FULIZA_DRAW }
             .sumOf { e -> e.lines.filter { it.accountId in saveIds && it.amount > 0 }.sumOf { it.amount } }
         val total = needs + wants + saved

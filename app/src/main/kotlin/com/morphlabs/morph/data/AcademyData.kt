@@ -38,7 +38,7 @@ fun Snapshot.academyData(today: LocalDate): AcademyData {
     val months = (ChronoUnit.DAYS.between(firstDay, today) + 1).coerceAtLeast(30) / 30.0
     val spendAll = into(real, isExpense)
     val savings = live.filter { it.group == AccountGroup.SAVINGS }.sumOf { balance(it) }
-    val debts = live.filter { it.group == AccountGroup.DEBT }.sumOf { maxOf(balance(it), 0L) }
+    val debts = live.filter { it.type == AccountType.LIABILITY }.sumOf { maxOf(balance(it), 0L) }
     val assets = live.filter { it.type == AccountType.ASSET }.sumOf { balance(it) }
     val incomeIn = last30.sumOf { e -> e.lines.filter { it.amount < 0 && byId[it.accountId]?.group == AccountGroup.INCOME }.sumOf { -it.amount } }
 

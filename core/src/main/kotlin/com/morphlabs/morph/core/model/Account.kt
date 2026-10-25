@@ -7,25 +7,28 @@ enum class AccountType {
     val debitNormal: Boolean get() = this == ASSET || this == EXPENSE
 }
 
-/** Fun names on or off for the whole app (a setting in Me). Plain names are always used for search too. */
+/** Fun wording in the app and the Money Dojo (a setting in Me, off by default). Account types always use standard names. */
 object Naming {
-    @Volatile var playful: Boolean = true
+    @Volatile var playful: Boolean = false
 
     fun pick(fun_: String, plain: String): String = if (playful) fun_ else plain
 }
 
 /** How an account is shown and reasoned about in the app. Users can change it. */
-enum class AccountGroup(val plainLabel: String, val type: AccountType, val funLabel: String) {
-    WALLET("Wallets", AccountType.ASSET, "Pockets"),
-    SAVINGS("Savings", AccountType.ASSET, "Stash"),
-    OWED_TO_ME("Owed to me", AccountType.ASSET, "IOUs to chase"),
-    DEBT("Debts", AccountType.LIABILITY, "Madeni Monsters"),
-    INCOME("Income", AccountType.INCOME, "Money Rain"),
-    FIXED("Fixed expenses", AccountType.EXPENSE, "Must-pays"),
-    DISCRETIONARY("Discretionary", AccountType.EXPENSE, "Treats & extras"),
-    SYSTEM("System", AccountType.EQUITY, "Behind the scenes");
+enum class AccountGroup(val label: String, val type: AccountType, private val alsoKnownAs: String = "") {
+    WALLET("Wallets", AccountType.ASSET),
+    SAVINGS("Savings", AccountType.ASSET),
+    OWED_TO_ME("Owed to me", AccountType.ASSET),
+    /** Due within about a year: Fuliza, Hustler Fund, friends. */
+    DEBT("Short-term liabilities", AccountType.LIABILITY, "debts loans"),
+    /** Paid back over years: HELB, mortgages, car and long bank loans. */
+    LONG_TERM_DEBT("Long-term liabilities", AccountType.LIABILITY, "debts loans"),
+    INCOME("Income", AccountType.INCOME),
+    FIXED("Fixed expenses", AccountType.EXPENSE),
+    DISCRETIONARY("Discretionary", AccountType.EXPENSE),
+    SYSTEM("System", AccountType.EQUITY);
 
-    val label: String get() = Naming.pick(funLabel, plainLabel)
+    val searchText: String get() = "$label $alsoKnownAs"
 }
 
 enum class BudgetPeriod(val label: String) { NONE("No budget"), DAILY("Daily"), MONTHLY("Monthly") }
@@ -61,9 +64,9 @@ data class Account(
 
     val label: String get() = "$emoji $name"
 
-    /** Search matches the name and both the fun and plain type names. */
+    /** Search matches the name, the type, and words like "debt" for liabilities. */
     fun matches(needle: String): Boolean {
         val n = needle.trim().lowercase()
-        return n.isEmpty() || listOf(name, typeLabel, group.plainLabel, group.funLabel).any { it.lowercase().contains(n) }
+        return n.isEmpty() || listOf(name, typeLabel, group.searchText).any { it.lowercase().contains(n) }
     }
 }

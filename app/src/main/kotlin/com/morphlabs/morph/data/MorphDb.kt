@@ -56,6 +56,8 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
         }
         if (oldVersion < 4) createAllocations(db)
         if (oldVersion < 5) createAcademy(db)
+        // Liabilities split in two; HELB is paid back over years.
+        if (oldVersion < 6) db.execSQL("UPDATE accounts SET grp = 'LONG_TERM_DEBT' WHERE hint = 'helb' AND grp = 'DEBT'")
     }
 
     private fun createAllocations(db: SQLiteDatabase) {
@@ -68,6 +70,6 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
 
     companion object {
         const val NAME = "morph.db"
-        const val VERSION = 5
+        const val VERSION = 6
     }
 }

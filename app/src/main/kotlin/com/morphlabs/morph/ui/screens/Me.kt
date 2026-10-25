@@ -126,12 +126,20 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             }
         }
         item {
-            SectionTitle("Debts")
+            SectionTitle("Liabilities")
             MorphCard {
                 Column(Modifier.padding(16.dp)) {
-                    if (debts.all { it.second == 0L }) Text("No debts recorded. 🎉", style = MaterialTheme.typography.bodyMedium)
-                    for ((a, v) in debts) BalanceRow(a, v) { account(a) }
-                    Text("Tap a debt to see its payments; Edit account sets what you owe or a monthly repayment target.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (debts.all { it.second == 0L }) Text("Nothing owed. 🎉", style = MaterialTheme.typography.bodyMedium)
+                    for (g in listOf(AccountGroup.DEBT, AccountGroup.LONG_TERM_DEBT)) {
+                        val inGroup = debts.filter { it.first.group == g }
+                        if (inGroup.isEmpty()) continue
+                        Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                            Text(g.label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                            Text(Money.format(inGroup.sumOf { it.second }), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        for ((a, v) in inGroup) BalanceRow(a, v) { account(a) }
+                    }
+                    Text("Tap a liability to see its payments; Edit account sets what you owe or a monthly repayment target.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -199,8 +207,8 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             MorphCard {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("😄 Fun names", fontWeight = FontWeight.SemiBold)
-                        Text("Madeni Monsters instead of Debts, 💣 Today's Bomb instead of Today's lesson, and more. Off = plain names.",
+                        Text("😄 Playful wording", fontWeight = FontWeight.SemiBold)
+                        Text("Playful wording such as 💣 Today's Bomb, Bahasha and Money X-ray. Off (standard names) is easiest when you share Morph. Account types always use standard names.",
                             style = MaterialTheme.typography.bodySmall)
                     }
                     var playful by remember { mutableStateOf(repo.playful) }

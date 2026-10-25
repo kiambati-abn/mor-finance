@@ -3,6 +3,7 @@ package com.morphlabs.morph.core.defaults
 import com.morphlabs.morph.core.model.Account
 import com.morphlabs.morph.core.model.AccountGroup
 import com.morphlabs.morph.core.model.AccountGroup.DEBT
+import com.morphlabs.morph.core.model.AccountGroup.LONG_TERM_DEBT
 import com.morphlabs.morph.core.model.AccountGroup.DISCRETIONARY
 import com.morphlabs.morph.core.model.AccountGroup.FIXED
 import com.morphlabs.morph.core.model.AccountGroup.INCOME
@@ -32,7 +33,7 @@ object DefaultAccounts {
 
         Spec("Fuliza", "⚡", DEBT, "fuliza", SystemRole.FULIZA),
         Spec("Hustler Fund", "🇰🇪", DEBT, "hustler"),
-        Spec("HELB", "🎓", DEBT, "helb"),
+        Spec("HELB", "🎓", LONG_TERM_DEBT, "helb"),
         Spec("I owe friends", "🙏", DEBT, "i_owe"),
 
         Spec("Salary", "💼", INCOME, "salary"),

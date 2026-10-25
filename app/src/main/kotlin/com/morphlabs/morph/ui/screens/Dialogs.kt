@@ -69,8 +69,8 @@ fun AmountField(
 
 /** Accounts grouped the way people think about them: spending first, then savings, debts, income. */
 fun pickOrder(accounts: List<Account>, outgoing: Boolean?): List<Pair<AccountGroup, List<Account>>> {
-    val order = if (outgoing == false) listOf(AccountGroup.INCOME, AccountGroup.OWED_TO_ME, AccountGroup.DEBT, AccountGroup.SAVINGS, AccountGroup.WALLET)
-    else listOf(AccountGroup.FIXED, AccountGroup.DISCRETIONARY, AccountGroup.SAVINGS, AccountGroup.DEBT, AccountGroup.OWED_TO_ME, AccountGroup.WALLET, AccountGroup.INCOME)
+    val order = if (outgoing == false) listOf(AccountGroup.INCOME, AccountGroup.OWED_TO_ME, AccountGroup.DEBT, AccountGroup.LONG_TERM_DEBT, AccountGroup.SAVINGS, AccountGroup.WALLET)
+    else listOf(AccountGroup.FIXED, AccountGroup.DISCRETIONARY, AccountGroup.SAVINGS, AccountGroup.DEBT, AccountGroup.LONG_TERM_DEBT, AccountGroup.OWED_TO_ME, AccountGroup.WALLET, AccountGroup.INCOME)
     val allowed = accounts.filter { it.pickable }.filter {
         when (outgoing) {
             true -> it.type != AccountType.INCOME

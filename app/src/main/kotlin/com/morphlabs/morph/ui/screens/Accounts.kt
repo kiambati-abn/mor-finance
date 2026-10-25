@@ -69,7 +69,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
             for (l in e.lines) out[l.accountId] = (out[l.accountId] ?: 0L) + l.amount
         out
     }
-    val types = listOf("all" to "All", "spend" to "Spending", "save" to "Savings", "debt" to "Debts", "wallet" to "Wallets", "income" to "Income", "budget" to "With budget")
+    val types = listOf("all" to "All", "spend" to "Spending", "save" to "Savings", "debt" to "Liabilities", "wallet" to "Wallets", "income" to "Income", "budget" to "With budget")
     val needle = query.trim().lowercase()
     val shown = s.accounts.filter { a ->
         a.group != AccountGroup.SYSTEM && (showArchived || !a.archived) &&
@@ -77,7 +77,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
             when (type) {
                 "spend" -> a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
                 "save" -> a.group == AccountGroup.SAVINGS || a.group == AccountGroup.OWED_TO_ME
-                "debt" -> a.group == AccountGroup.DEBT
+                "debt" -> a.type == com.morphlabs.morph.core.model.AccountType.LIABILITY
                 "wallet" -> a.group == AccountGroup.WALLET
                 "income" -> a.group == AccountGroup.INCOME
                 "budget" -> a.period != BudgetPeriod.NONE && a.budget > 0
@@ -146,7 +146,7 @@ private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, mont
                     budgetMode && a.group == AccountGroup.WALLET -> "••••" to "in envelopes"
                     a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE -> Money.format(monthNet) to "spent this month"
                     a.type == com.morphlabs.morph.core.model.AccountType.INCOME -> Money.format(-monthNet) to "in this month"
-                    else -> Money.format(s.balance(a)) to (if (a.group == AccountGroup.DEBT) "owed" else "balance")
+                    else -> Money.format(s.balance(a)) to (if (a.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) "owed" else "balance")
                 }
                 if (big.isNotEmpty()) Column(horizontalAlignment = Alignment.End) {
                     Text(big, fontWeight = FontWeight.Bold)
@@ -163,14 +163,14 @@ private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, mont
                 val saving = a.type != com.morphlabs.morph.core.model.AccountType.EXPENSE
                 com.morphlabs.morph.ui.components.SpentLeft(envelope.used, envelope.left, maxOf(envelope.assigned, envelope.target),
                     com.morphlabs.morph.core.budget.Level.OK,
-                    spentWord = if (a.group == AccountGroup.DEBT) "Repaid" else if (saving) "Saved" else "Spent", leftWord = if (saving) "In envelope" else "Left")
+                    spentWord = if (a.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) "Repaid" else if (saving) "Saved" else "Spent", leftWord = if (saving) "In envelope" else "Left")
             } else if (a.period != BudgetPeriod.NONE && a.budget > 0) {
                 val expense = a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
                 val used = (if (a.type == com.morphlabs.morph.core.model.AccountType.INCOME) -monthNet else monthNet).coerceAtLeast(0)
                 Gap(6)
                 com.morphlabs.morph.ui.components.SpentLeft(used, a.budget - used, a.budget,
                     if (expense) com.morphlabs.morph.core.budget.Health.level(a.budget - used, a.budget) else com.morphlabs.morph.core.budget.Level.OK,
-                    spentWord = when { expense -> "Spent"; a.group == AccountGroup.DEBT -> "Repaid"; a.group == AccountGroup.INCOME -> "Received"; else -> "Saved" },
+                    spentWord = when { expense -> "Spent"; a.type == com.morphlabs.morph.core.model.AccountType.LIABILITY -> "Repaid"; a.group == AccountGroup.INCOME -> "Received"; else -> "Saved" },
                     leftWord = if (expense) "Left" else "To go",
                     period = "this month")
             }
