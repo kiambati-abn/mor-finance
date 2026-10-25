@@ -152,17 +152,27 @@ class Snapshot(
      * How an account's spending budget is doing right now (envelope, or plain budget), or null when
      * it has none. Savings and debt targets aren't warnings, so only spending accounts get one.
      */
-    fun health(accountId: Long, today: java.time.LocalDate): com.morphlabs.morph.core.budget.Health? {
+    fun health(accountId: Long, today: java.time.LocalDate): com.morphlabs.morph.core.budget.Health? = healthParts(accountId, today)?.worst
+
+    /** A spending budget's month part and day part (either may be missing); the light follows the worse one. */
+    class BudgetHealth(val month: com.morphlabs.morph.core.budget.Health?, val day: com.morphlabs.morph.core.budget.Health?) {
+        val worst: com.morphlabs.morph.core.budget.Health? get() = listOfNotNull(day, month).maxByOrNull { it.level.ordinal }
+    }
+
+    fun healthParts(accountId: Long, today: java.time.LocalDate): BudgetHealth? {
         val a = byId[accountId] ?: return null
         if (a.type != com.morphlabs.morph.core.model.AccountType.EXPENSE) return null
         val month = java.time.YearMonth.from(today).toString()
+        val monthly = a.period == com.morphlabs.morph.core.model.BudgetPeriod.MONTHLY
         book?.let { _ ->
             val e = envelopesOn(today).firstOrNull { it.account.id == accountId } ?: return null
-            return if (e.todayLeft != null) com.morphlabs.morph.core.budget.Health(accountId, minOf(e.todayLeft!!, e.left), a.budget, today.toString())
-            else com.morphlabs.morph.core.budget.Health(accountId, e.left, maxOf(e.assigned, e.target), month)
+            val day = e.todayLeft?.let { com.morphlabs.morph.core.budget.Health(accountId, minOf(it, e.left), a.perDay, today.toString()) }
+            val m = if (monthly || day == null) com.morphlabs.morph.core.budget.Health(accountId, e.left, maxOf(e.assigned, e.target), month) else null
+            return BudgetHealth(m, day)
         }
         val e = budgetsOn(today).firstOrNull { it.account.id == accountId && it.isLimit } ?: return null
-        return com.morphlabs.morph.core.budget.Health(accountId, e.left, e.available, if (e.period == com.morphlabs.morph.core.model.BudgetPeriod.DAILY) today.toString() else month)
+        return if (e.period == com.morphlabs.morph.core.model.BudgetPeriod.DAILY) BudgetHealth(null, com.morphlabs.morph.core.budget.Health(accountId, e.left, e.available, today.toString()))
+        else BudgetHealth(com.morphlabs.morph.core.budget.Health(accountId, e.left, e.available, month), e.todayLeft?.let { com.morphlabs.morph.core.budget.Health(accountId, minOf(it, e.left), e.dayLimit, today.toString()) })
     }
 
     // Worked out once per day per snapshot: health() is asked for every account on every screen.

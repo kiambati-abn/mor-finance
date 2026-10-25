@@ -27,7 +27,12 @@ data class Envelope(
     val moved: Long,
     /** Spent (expenses), saved (savings), repaid (debts) or received (income) in the period. */
     val used: Long,
+    /** A per-day cap on a monthly budget (0 = none), and what's been used of it today. */
+    val dayLimit: Long = 0,
+    val usedToday: Long = 0,
 ) {
+    /** What today's cap still allows, for monthly budgets that have one. */
+    val todayLeft: Long? get() = if (dayLimit > 0 && period == BudgetPeriod.MONTHLY) dayLimit - usedToday else null
     val available: Long get() = planned + moved
     val left: Long get() = available - used
     val progress: Float get() = if (available <= 0) (if (used > 0) 1f else 0f) else used.toFloat() / available
@@ -58,7 +63,8 @@ class Budgets(private val zone: ZoneId) {
             val moved = moves.filter { it.periodKey == key }.sumOf { m ->
                 (if (m.toId == a.id) m.amount else 0L) - (if (m.fromId == a.id) m.amount else 0L)
             }
-            Envelope(a, a.period, a.budget, moved, used(a, entries, start, end))
+            val cap = if (a.period == BudgetPeriod.MONTHLY) a.dailyCap else 0L
+            Envelope(a, a.period, a.budget, moved, used(a, entries, start, end), cap, if (cap > 0) used(a, entries, dayStart, dayEnd) else 0L)
         }
     }
 
@@ -75,7 +81,8 @@ class Budgets(private val zone: ZoneId) {
                     // Spread what was left at the start of today, then subtract what's already gone today.
                     val today = spentToday[e.account.id] ?: 0L
                     val leftAtDawn = e.left + today
-                    maxOf(0L, leftAtDawn / daysLeft - today)
+                    val spread = maxOf(0L, leftAtDawn / daysLeft - today)
+                    e.todayLeft?.let { minOf(spread, maxOf(0L, it)) } ?: spread
                 }
             }
         }

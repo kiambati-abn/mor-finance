@@ -154,10 +154,17 @@ private fun AccountRow(s: Snapshot, a: Account, today: java.time.LocalDate, mont
                 }
                 TextButton(onClick = onEdit) { Text("Edit") }
             }
-            if (h != null && h.available > 0) {
-                Gap(6)
-                com.morphlabs.morph.ui.components.SpentLeft(h.available - h.left, h.left, h.available, h.level,
-                    period = if (a.period == BudgetPeriod.DAILY) "today" else "this month")
+            val parts = if (h != null) s.healthParts(a.id, today) else null
+            if (parts != null && h!!.available > 0) {
+                // Month and day limits each get their own bar.
+                parts.month?.takeIf { it.available > 0 }?.let { m ->
+                    Gap(6)
+                    com.morphlabs.morph.ui.components.SpentLeft(m.available - m.left, m.left, m.available, m.level, period = "this month")
+                }
+                parts.day?.takeIf { it.available > 0 }?.let { d ->
+                    Gap(6)
+                    com.morphlabs.morph.ui.components.SpentLeft(d.available - d.left, d.left, d.available, d.level, period = "today")
+                }
             } else if (envelope != null && envelope.target > 0) {
                 Gap(6)
                 val saving = a.type != com.morphlabs.morph.core.model.AccountType.EXPENSE

@@ -39,7 +39,7 @@ class EnvelopeBook(
         val used: Long,
         /** What Fill tops it up to right now (from the account's daily or monthly amount). */
         val target: Long,
-        /** For daily envelopes: what's still allowed today. */
+        /** For daily envelopes and monthly ones with a per-day cap: what's still allowed today. */
         val todayLeft: Long?,
     ) {
         val left: Long get() = assigned - used
@@ -90,10 +90,11 @@ class EnvelopeBook(
         return envelopeAccounts().map { a ->
             val assigned = allocations.filter { it.accountId == a.id }.sumOf { it.amount }
             val used = used(a)
-            val todayLeft = if (a.period == BudgetPeriod.DAILY) {
+            // Daily envelopes, and monthly ones with a per-day cap, also say what's allowed today.
+            val todayLeft = if (a.perDay > 0) {
                 val spentToday = entries.filter { it.timestamp >= maxOf(dayStart, start) && it.source != EntrySource.SYSTEM }
                     .sumOf { e -> e.lines.filter { it.accountId == a.id }.sumOf { it.amount } }
-                minOf(a.budget - spentToday, assigned - used)
+                minOf(a.perDay - spentToday, assigned - used)
             } else null
             Envelope(a, assigned, used, target(a, today), todayLeft)
         }.sortedWith(compareBy({ it.account.group.ordinal }, { it.account.sortOrder }))

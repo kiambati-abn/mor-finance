@@ -28,9 +28,13 @@ The agreed starting point: what Morph does, the money model underneath it, and w
 
 ## Budgets
 
-- Any account can have an amount **per day** or **per month**: a limit for expenses, a target for savings and income, or a repayment plan for debts.
+- Any account can have an amount **per month**, **per day**, or **both**: a limit for expenses, a target for savings and income, or a repayment plan for debts.
+  - With both (e.g. Food: Ksh 12,000 a month, at most Ksh 500 a day), Morph watches the month *and* each day.
+  - The traffic light, alerts and *Safe to spend today* follow whichever is tighter.
+  - Accounts and Budgets show two bars: "this month" and "today".
+  - Alerts say "for today" when it's the day limit.
 - *Move budget* shifts the plan between envelopes for the current day or month. Real money doesn't move. (This replaces the yellow "transfer" rows from the Notion journal.)
-- *Safe to spend today* = what's left in today's daily envelopes + what's left in each monthly envelope ÷ the days left in the month.
+- *Safe to spend today* = what's left in today's daily envelopes + what's left in each monthly envelope ÷ the days left in the month (capped by its per-day limit when it has one).
 
 ## Tap anything to see what's behind it
 

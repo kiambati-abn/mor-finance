@@ -391,17 +391,18 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
     var newType by remember { mutableStateOf(false) }
     // Your own types: every name in use, with the group it belongs to.
     val customTypes = remember(s) { s.accounts.mapNotNull { a -> a.section?.let { it to a.group } }.distinct() }
-    var budget by remember { mutableStateOf(original?.budget?.takeIf { it > 0 }?.let { Money.format(it, withCurrency = false) } ?: "") }
-    var period by remember { mutableStateOf(original?.period ?: BudgetPeriod.MONTHLY) }
+    // Per month and per day can both be set (e.g. Ksh 12,000 a month, at most Ksh 500 a day).
+    var perMonth by remember { mutableStateOf(original?.perMonth?.takeIf { it > 0 }?.let { Money.format(it, withCurrency = false) } ?: "") }
+    var perDay by remember { mutableStateOf(original?.perDay?.takeIf { it > 0 }?.let { Money.format(it, withCurrency = false) } ?: "") }
     var archived by remember { mutableStateOf(original?.archived ?: false) }
     val current = original?.let { s.balance(it) }
     var balance by remember { mutableStateOf("") }
     val isSystem = original?.role != null
     val budgetLabel = when (group.type) {
-        AccountType.EXPENSE -> "Budget (limit)"
-        AccountType.LIABILITY -> "Repay target"
-        AccountType.INCOME -> "Expected income"
-        else -> "Save target"
+        AccountType.EXPENSE -> "Limit"
+        AccountType.LIABILITY -> "Repay"
+        AccountType.INCOME -> "Expected"
+        else -> "Save"
     }
 
     AlertDialog(
@@ -434,11 +435,23 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
                 }
                 if (group != AccountGroup.SYSTEM && group != AccountGroup.WALLET) {
                     Gap(8)
-                    AmountField(budget, { budget = it }, budgetLabel)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        FilterChip(selected = period == BudgetPeriod.DAILY, onClick = { period = BudgetPeriod.DAILY }, label = { Text("Per day") })
-                        FilterChip(selected = period == BudgetPeriod.MONTHLY, onClick = { period = BudgetPeriod.MONTHLY }, label = { Text("Per month") })
+                    Text("Budget: fill one or both", style = MaterialTheme.typography.labelLarge)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AmountField(perMonth, { perMonth = it }, "$budgetLabel per month", Modifier.weight(1f), imeAction = androidx.compose.ui.text.input.ImeAction.Next)
+                        AmountField(perDay, { perDay = it }, "$budgetLabel per day", Modifier.weight(1f))
                     }
+                    val m = Money.parse(perMonth) ?: 0L
+                    val d = Money.parse(perDay) ?: 0L
+                    Text(
+                        when {
+                            m > 0 && d > 0 && d * 30 < m -> "Watching both: the month, and each day. At ${Money.format(d)} a day you'd use about ${Money.format(d * 30)} a month."
+                            m > 0 && d > 0 -> "Watching both: the month, and each day. The day limit is generous: ${Money.format(d)} × 30 is more than the month."
+                            m > 0 -> "Monthly only. Add a per-day amount to stop one big day eating the month."
+                            d > 0 -> "Per day only. It resets every morning."
+                            else -> "No budget."
+                        },
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
                 if (original != null && (group.type == AccountType.ASSET || group.type == AccountType.LIABILITY)) {
                     Gap(8)
@@ -455,11 +468,10 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
         },
         confirmButton = {
             TextButton(enabled = name.isNotBlank(), onClick = {
-                val cents = Money.parse(budget) ?: 0L
+                val noBudget = group == AccountGroup.SYSTEM || group == AccountGroup.WALLET
                 val acc = (original ?: Account(id = 0, name = name, emoji = emoji, group = group, sortOrder = s.accounts.size)).copy(
-                    name = name.trim(), emoji = emoji, group = group, section = section, budget = cents,
-                    period = if (cents > 0) period else BudgetPeriod.NONE, archived = archived,
-                )
+                    name = name.trim(), emoji = emoji, group = group, section = section, archived = archived,
+                ).withBudget(if (noBudget) 0 else Money.parse(perMonth) ?: 0L, if (noBudget) 0 else Money.parse(perDay) ?: 0L)
                 val target = Money.parse(balance)
                 Thread {
                     val id = repo.saveAccount(acc)

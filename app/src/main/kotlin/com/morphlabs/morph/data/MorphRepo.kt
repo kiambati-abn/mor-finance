@@ -547,7 +547,7 @@ class MorphRepo private constructor(context: Context) {
     fun saveAccount(a: Account): Long {
         val v = ContentValues().apply {
             put("name", a.name.trim()); put("emoji", a.emoji); put("grp", a.group.name)
-            put("budget", a.budget); put("period", a.period.name)
+            put("budget", a.budget); put("period", a.period.name); put("daily_cap", a.dailyCap)
             put("role", a.role?.name); put("hint", a.hint)
             put("archived", if (a.archived) 1 else 0); put("sort", a.sortOrder)
             put("section", a.section?.trim()?.ifEmpty { null })
@@ -805,7 +805,7 @@ class MorphRepo private constructor(context: Context) {
 
     private fun load(): Snapshot {
         com.morphlabs.morph.core.model.Naming.playful = meta(KEY_PLAYFUL) == "1"
-        val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort, section FROM accounts ORDER BY sort, id", null).use { c ->
+        val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort, section, daily_cap FROM accounts ORDER BY sort, id", null).use { c ->
             buildList {
                 while (c.moveToNext()) add(
                     Account(
@@ -813,7 +813,7 @@ class MorphRepo private constructor(context: Context) {
                         group = enumOr(c.getString(3), AccountGroup.DISCRETIONARY),
                         budget = c.getLong(4), period = enumOr(c.getString(5), BudgetPeriod.NONE),
                         role = c.str(6)?.let { r -> runCatching { SystemRole.valueOf(r) }.getOrNull() },
-                        hint = c.str(7), archived = c.getInt(8) == 1, sortOrder = c.getInt(9), section = c.str(10),
+                        hint = c.str(7), archived = c.getInt(8) == 1, sortOrder = c.getInt(9), section = c.str(10), dailyCap = c.getLong(11),
                     )
                 )
             }

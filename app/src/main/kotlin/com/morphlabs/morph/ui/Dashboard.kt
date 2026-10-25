@@ -66,7 +66,12 @@ class Dashboard(val s: Snapshot, val today: LocalDate) {
     val envelopeToday: Long? = envList?.let { list ->
         val daysLeft = (java.time.YearMonth.from(today).lengthOfMonth() - today.dayOfMonth + 1).toLong()
         list.filter { it.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE }.sumOf { e ->
-            if (e.todayLeft != null) maxOf(0L, minOf(e.todayLeft!!, e.left)) else maxOf(0L, e.left) / daysLeft
+            val spread = maxOf(0L, e.left) / daysLeft
+            when {
+                e.todayLeft == null -> spread
+                e.account.period == com.morphlabs.morph.core.model.BudgetPeriod.DAILY -> maxOf(0L, minOf(e.todayLeft!!, e.left))
+                else -> minOf(spread, maxOf(0L, e.todayLeft!!)) // monthly with a per-day cap: the tighter of the two
+            }
         }
     }
     val netWorth = Balances.netWorth(s.accounts.filter { !it.archived }, s.raw)

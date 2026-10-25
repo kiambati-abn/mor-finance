@@ -168,7 +168,9 @@ object Notifier {
     fun budgetAlert(context: Context, a: com.morphlabs.morph.core.model.Account, h: com.morphlabs.morph.core.budget.Health) {
         if (!canNotify(context)) return
         val over = h.level == com.morphlabs.morph.core.budget.Level.OVER
-        val title = if (over) "⛔ ${a.label} is over budget" else "🔴 ${a.label} is almost out"
+        // A day key ("2026-10-25") means today's limit; a month key ("2026-10") means the month's.
+        val when_ = if (h.periodKey.length > 7) " for today" else ""
+        val title = if (over) "⛔ ${a.label} is over budget$when_" else "🔴 ${a.label} is almost out$when_"
         val text = if (over) "Over by ${Money.format(-h.left)}. Move money from another budget to cover it."
         else "${Money.format(h.left)} left (${(h.usedShare * 100).toInt()}% used). Spend carefully."
         val open = PendingIntent.getActivity(

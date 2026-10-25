@@ -54,7 +54,22 @@ data class Account(
     val sortOrder: Int = 0,
     /** Your own type name ("Church", "Business"), shown instead of the group's name. The group still decides the maths. */
     val section: String? = null,
+    /** An extra per-day limit on top of a monthly budget (0 = none), e.g. Ksh 12,000 a month but at most Ksh 500 a day. */
+    val dailyCap: Long = 0,
 ) {
+    /** The per-day amount, whether it's the budget itself or a cap on a monthly one (0 = none). */
+    val perDay: Long get() = if (period == BudgetPeriod.DAILY) budget else dailyCap
+
+    /** The per-month amount (0 = none). */
+    val perMonth: Long get() = if (period == BudgetPeriod.MONTHLY) budget else 0
+
+    /** Builds the budget fields from "per month" and "per day" amounts; either or both may be 0. */
+    fun withBudget(perMonth: Long, perDay: Long): Account = when {
+        perMonth > 0 -> copy(budget = perMonth, period = BudgetPeriod.MONTHLY, dailyCap = perDay.coerceAtLeast(0))
+        perDay > 0 -> copy(budget = perDay, period = BudgetPeriod.DAILY, dailyCap = 0)
+        else -> copy(budget = 0, period = BudgetPeriod.NONE, dailyCap = 0)
+    }
+
     val typeLabel: String get() = section ?: group.label
 
     val type: AccountType get() = group.type

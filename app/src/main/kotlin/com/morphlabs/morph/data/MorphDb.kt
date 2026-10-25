@@ -17,7 +17,8 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL, emoji TEXT NOT NULL, grp TEXT NOT NULL,
                 budget INTEGER NOT NULL DEFAULT 0, period TEXT NOT NULL DEFAULT 'NONE',
-                role TEXT, hint TEXT, archived INTEGER NOT NULL DEFAULT 0, sort INTEGER NOT NULL DEFAULT 0, section TEXT)"""
+                role TEXT, hint TEXT, archived INTEGER NOT NULL DEFAULT 0, sort INTEGER NOT NULL DEFAULT 0, section TEXT,
+                daily_cap INTEGER NOT NULL DEFAULT 0)"""
         )
         db.execSQL(
             """CREATE TABLE entries(
@@ -58,6 +59,7 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
         if (oldVersion < 5) createAcademy(db)
         // Liabilities split in two; HELB is paid back over years.
         if (oldVersion < 6) db.execSQL("UPDATE accounts SET grp = 'LONG_TERM_DEBT' WHERE hint = 'helb' AND grp = 'DEBT'")
+        if (oldVersion < 7) db.execSQL("ALTER TABLE accounts ADD COLUMN daily_cap INTEGER NOT NULL DEFAULT 0")
     }
 
     private fun createAllocations(db: SQLiteDatabase) {
@@ -70,6 +72,6 @@ class MorphDb(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION)
 
     companion object {
         const val NAME = "morph.db"
-        const val VERSION = 6
+        const val VERSION = 7
     }
 }

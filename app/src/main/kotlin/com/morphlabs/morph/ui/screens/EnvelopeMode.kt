@@ -127,10 +127,12 @@ fun EnvelopeModeScreen(repo: MorphRepo, d: Dashboard, book: EnvelopeBook, goAcco
 @Composable
 private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = null, onClick: () -> Unit) {
     val daily = e.account.period == BudgetPeriod.DAILY
-    val level = if (e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE) {
-        if (daily) com.morphlabs.morph.core.budget.Health.level(minOf(e.todayLeft ?: e.left, e.left), e.account.budget)
-        else com.morphlabs.morph.core.budget.Health.level(e.left, maxOf(e.assigned, e.target))
-    } else com.morphlabs.morph.core.budget.Level.OK
+    val expense = e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
+    val dayLevel = e.todayLeft?.let { com.morphlabs.morph.core.budget.Health.level(minOf(it, e.left), e.account.perDay) }
+    val monthLevel = com.morphlabs.morph.core.budget.Health.level(e.left, maxOf(e.assigned, e.target))
+    val level = if (!expense) com.morphlabs.morph.core.budget.Level.OK
+        else if (daily) dayLevel ?: monthLevel
+        else listOfNotNull(dayLevel, monthLevel).maxBy { it.ordinal }
     MorphCard(Modifier.padding(bottom = 8.dp), onClick = onClick) {
         Column(Modifier.padding(14.dp)) {
             Text(e.account.label, fontWeight = FontWeight.SemiBold)
@@ -139,13 +141,21 @@ private fun EnvelopeCard(e: EnvelopeBook.Envelope, afford: Pair<Long, Long>? = n
             val spending = e.account.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
             if (daily && e.todayLeft != null) {
                 val todayLeft = minOf(e.todayLeft!!, e.left)
-                com.morphlabs.morph.ui.components.SpentLeft(e.account.budget - todayLeft, todayLeft, e.account.budget, level, period = "today")
+                com.morphlabs.morph.ui.components.SpentLeft(e.account.perDay - todayLeft, todayLeft, e.account.perDay, level, period = "today")
                 Text("${Money.format(e.left)} in envelope for the rest of the month", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else com.morphlabs.morph.ui.components.SpentLeft(
-                e.used, e.left, maxOf(e.assigned, e.target), level,
-                spentWord = if (spending) "Spent" else if (e.account.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) "Repaid" else "Saved",
-                leftWord = if (spending) "Left" else "In envelope",
-            )
+            } else {
+                com.morphlabs.morph.ui.components.SpentLeft(
+                    e.used, e.left, maxOf(e.assigned, e.target), if (expense) monthLevel else level,
+                    spentWord = if (spending) "Spent" else if (e.account.type == com.morphlabs.morph.core.model.AccountType.LIABILITY) "Repaid" else "Saved",
+                    leftWord = if (spending) "Left" else "In envelope",
+                )
+                // A monthly envelope with a per-day cap also shows today.
+                if (e.todayLeft != null && dayLevel != null) {
+                    Gap(6)
+                    val t = minOf(e.todayLeft!!, e.left)
+                    com.morphlabs.morph.ui.components.SpentLeft(e.account.perDay - t, t, e.account.perDay, dayLevel, period = "today")
+                }
+            }
         }
     }
 }
