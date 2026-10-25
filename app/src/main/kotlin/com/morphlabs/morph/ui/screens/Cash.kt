@@ -74,7 +74,7 @@ fun CashSpreadPanel(repo: MorphRepo, s: Snapshot, withdrawal: Entry, remaining: 
     parts.forEachIndexed { i, (a, v) ->
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
             Text(a.label, modifier = Modifier.weight(1f))
-            AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f))
+            AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f), imeAction = androidx.compose.ui.text.input.ImeAction.Next)
             TextButton(onClick = { parts.removeAt(i) }) { Text("✕") }
         }
     }

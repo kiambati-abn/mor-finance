@@ -52,14 +52,17 @@ import com.morphlabs.morph.ui.components.whenText
 import java.time.LocalDate
 
 @Composable
-fun AmountField(value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+fun AmountField(
+    value: String, onChange: (String) -> Unit, label: String, modifier: Modifier = Modifier,
+    imeAction: androidx.compose.ui.text.input.ImeAction = androidx.compose.ui.text.input.ImeAction.Done,
+) {
     OutlinedTextField(
         value = value,
         onValueChange = { v -> onChange(v.filter { it.isDigit() || it == '.' || it == ',' }) },
         label = { Text(label) },
         prefix = { Text("Ksh ") },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = imeAction),
         modifier = modifier.fillMaxWidth(),
     )
 }
@@ -130,9 +133,9 @@ fun AddEntryDialog(repo: MorphRepo, s: Snapshot, onDismiss: () -> Unit) {
                     }
                 }
                 Gap(8)
-                AmountField(amount, { amount = it }, "Amount")
+                AmountField(amount, { amount = it }, "Amount", imeAction = androidx.compose.ui.text.input.ImeAction.Next)
                 Gap(8)
-                OutlinedTextField(note, { note = it }, label = { Text("What for? (e.g. lunch, fare)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(note, { note = it }, label = { Text("What for? (e.g. lunch, fare)") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 PickRow(if (kind == 1) "From (source)" else "From", from) { picking = "from" }
                 PickRow(if (kind == 0) "On (category)" else "To", to) { picking = "to" }
@@ -217,7 +220,7 @@ fun EntryDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: () -> Unit) {
                     for (l in Posting.categorySide(e, s.structural)) Text("  ${s.byId[l.accountId]?.label}  ${Money.format(kotlin.math.abs(l.amount))}")
                 } else Text("Filed under: ${cats.firstOrNull()?.label ?: "—"}  (${e.status.name.lowercase().replace('_', ' ')})")
                 Gap(8)
-                OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (e.kind == com.morphlabs.morph.core.model.TxKind.WITHDRAW) OutlinedButton(onClick = { cash = true }) { Text("💵 Spread this cash") }
@@ -284,9 +287,9 @@ private fun EditManualDialog(repo: MorphRepo, s: Snapshot, e: Entry, onDismiss: 
         title = { Text("Edit transaction") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                AmountField(amount, { amount = it }, "Amount")
+                AmountField(amount, { amount = it }, "Amount", imeAction = androidx.compose.ui.text.input.ImeAction.Next)
                 Gap(8)
-                OutlinedTextField(desc, { desc = it }, label = { Text("What for?") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(desc, { desc = it }, label = { Text("What for?") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 PickRow("From", from) { picking = "from" }
                 PickRow("To", to) { picking = "to" }
@@ -345,7 +348,7 @@ fun SplitDialog(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: ((com.morphlab
                             Text(Money.format(rest), fontWeight = FontWeight.Bold,
                                 color = if (rest < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                             Text("the rest", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        } else AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f))
+                        } else AmountField(v, { parts[i] = a to it }, "", modifier = Modifier.weight(1f), imeAction = androidx.compose.ui.text.input.ImeAction.Next)
                         TextButton(onClick = { parts.removeAt(i) }) { Text("✕") }
                     }
                 }
@@ -406,7 +409,7 @@ fun AccountEditDialog(repo: MorphRepo, s: Snapshot, original: Account?, onDismis
         title = { Text(if (original == null) "New account" else "Edit ${original.name}") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (e in emojiChoices) Text(
@@ -481,7 +484,7 @@ private fun NewTypeDialog(onDismiss: () -> Unit, onCreate: (String, AccountGroup
         title = { Text("New type") },
         text = {
             Column {
-                OutlinedTextField(name, { name = it }, label = { Text("Name, e.g. Church, Business, Farm") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(name, { name = it }, label = { Text("Name, e.g. Church, Business, Farm") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
                 Gap(8)
                 Text("It works like…", style = MaterialTheme.typography.labelLarge)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {

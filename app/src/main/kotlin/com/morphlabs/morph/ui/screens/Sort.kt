@@ -329,7 +329,7 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
         SearchableAccounts(s, out, exclude = guess.suggestions.map { it.accountId }.toSet()) { pick(it) }
     }
     Gap(12)
-    OutlinedTextField(note, { note = it }, label = { Text("Note (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(note, { note = it }, label = { Text("Note (optional)") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
     if (splitting) SplitDialog(repo, s, e, onSorted = { r -> onSorted(r, "Split", 1) }) { splitting = false }
     e.smsBody?.let {
         Gap(12)
@@ -349,7 +349,7 @@ fun SearchableAccounts(s: Snapshot, outgoing: Boolean?, exclude: Set<Long> = emp
             .filter { it.pickable && it.id !in exclude && (outgoing != true || it.type != AccountType.INCOME) && (outgoing != false || it.type != AccountType.EXPENSE) }
             .distinctBy { it.id }.take(6).toList()
     }
-    OutlinedTextField(q, { q = it }, label = { Text("Search accounts") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(q, { q = it }, label = { Text("Search accounts") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys, modifier = Modifier.fillMaxWidth())
     val needle = q.trim().lowercase()
     if (needle.isEmpty() && recent.isNotEmpty()) {
         Text("Recent", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))

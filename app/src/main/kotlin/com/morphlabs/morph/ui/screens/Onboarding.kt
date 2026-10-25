@@ -304,6 +304,8 @@ private fun Balances(repo: MorphRepo, s: Snapshot, done: () -> Unit) {
             value = values[a.id] ?: "",
             onChange = { values[a.id] = it },
             label = "${a.emoji} ${a.name}" + if (a.group == AccountGroup.DEBT) " (I owe)" else "",
+            // ➜ on the keyboard jumps to the next balance; ✓ on the last one closes it.
+            imeAction = if (a == asks.last()) androidx.compose.ui.text.input.ImeAction.Done else androidx.compose.ui.text.input.ImeAction.Next,
         )
         Gap(8)
     }

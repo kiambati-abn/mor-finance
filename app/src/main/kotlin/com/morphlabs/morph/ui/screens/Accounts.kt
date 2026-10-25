@@ -95,7 +95,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp))
         Column(Modifier.padding(horizontal = 16.dp)) {
             androidx.compose.material3.OutlinedTextField(
-                query, { query = it }, singleLine = true, label = { Text("🔍 Find an account") },
+                query, { query = it }, singleLine = true, label = { Text("🔍 Find an account") }, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys,
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()).padding(vertical = 6.dp),

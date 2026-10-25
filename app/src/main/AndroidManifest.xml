@@ -40,7 +40,8 @@
             android:excludeFromRecents="true"
             android:launchMode="singleInstance"
             android:taskAffinity="com.morphlabs.morph.quicksort"
-            android:theme="@style/Theme.Morph.Dialog" />
+            android:theme="@style/Theme.Morph.Dialog"
+            android:windowSoftInputMode="adjustResize" />
 
         <receiver
             android:name=".sms.SmsReceiver"

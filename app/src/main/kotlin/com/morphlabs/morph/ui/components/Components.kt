@@ -28,6 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.composed
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
@@ -229,4 +232,17 @@ fun SpentLeft(spent: Long, left: Long, total: Long, level: com.morphlabs.morph.c
             LevelPill(level)
         }
     }
+}
+
+
+/** Single-line text: the keyboard's ✓ key closes it. */
+val DoneKeys = androidx.compose.foundation.text.KeyboardOptions(
+    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Sentences,
+    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+)
+
+/** Tapping anywhere that isn't a button or field closes the keyboard. */
+fun Modifier.tapToHideKeyboard(): Modifier = composed {
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    pointerInput(Unit) { detectTapGestures { focus.clearFocus() } }
 }

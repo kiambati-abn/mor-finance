@@ -4,6 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
+import com.morphlabs.morph.ui.components.tapToHideKeyboard
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Badge
@@ -57,7 +60,7 @@ fun MorphRoot(repo: MorphRepo) {
     }
     val r = root
     MorphTheme(r?.theme ?: "system") {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Surface(Modifier.fillMaxSize().tapToHideKeyboard(), color = MaterialTheme.colorScheme.background) {
             when {
                 r == null -> Box(Modifier.fillMaxSize())
                 !r.onboarded -> OnboardingScreen(repo, r.snapshot)
@@ -133,7 +136,7 @@ private fun MainBody(
             }
         },
     ) { pad ->
-        Box(Modifier.padding(pad)) {
+        Box(Modifier.padding(pad).consumeWindowInsets(pad).imePadding()) {
             when (tab) {
                 Tab.HOME -> HomeScreen(repo, dash, goSort = { setTab(Tab.SORT) }, goMe = { setTab(Tab.ME) }, goAll = { setPage(Page.TRANSACTIONS) },
                     goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { budgetsFilter = "all"; setTab(Tab.ENVELOPES) },

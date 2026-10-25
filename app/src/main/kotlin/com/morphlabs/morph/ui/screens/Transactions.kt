@@ -66,7 +66,7 @@ fun TransactionsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, filter:
             style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
-        OutlinedTextField(q, { q = it }, label = { Text("Search name, place or category") }, singleLine = true,
+        OutlinedTextField(q, { q = it }, label = { Text("Search name, place or category") }, singleLine = true, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((k, l) in listOf("all" to "All", "month" to "This month", "sort" to "To sort", "auto" to "Auto", "cash" to "By hand")) {

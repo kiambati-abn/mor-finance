@@ -53,13 +53,13 @@ fun FindBar(f: FindState) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(vertical = 6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
-                f.query, { f.query = it }, singleLine = true, label = { Text("🔍 Find") },
+                f.query, { f.query = it }, singleLine = true, label = { Text("🔍 Find") }, keyboardOptions = com.morphlabs.morph.ui.components.DoneKeys,
                 modifier = Modifier.weight(1.3f),
             )
             OutlinedTextField(
                 f.afford, { v -> f.afford = v.filter { it.isDigit() || it == '.' || it == ',' } }, singleLine = true,
                 label = { Text("Can I afford?") }, prefix = { Text("Ksh ") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 modifier = Modifier.weight(1f),
             )
         }
