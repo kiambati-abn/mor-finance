@@ -181,6 +181,10 @@ class Snapshot(
     fun warnings(today: java.time.LocalDate): List<com.morphlabs.morph.core.budget.Health> =
         accounts.mapNotNull { health(it.id, today) }.filter { it.level.warns }.sortedBy { it.level.ordinal * -1 }
 
+    /** A few lines to jog your memory about a transaction (Sort card). */
+    fun context(e: Entry): List<String> =
+        runCatching { com.morphlabs.morph.core.insight.TxContext.explain(e, entries, byId, structural, zone) }.getOrDefault(emptyList())
+
     /** "Ksh 1,240 left" for an account's envelope, if it has one. */
     fun envelopeLeft(accountId: Long, today: java.time.LocalDate): Long? =
         envelopesOn(today).firstOrNull { it.account.id == accountId }?.let { it.todayLeft?.let { t -> minOf(t, it.left) } ?: it.left }

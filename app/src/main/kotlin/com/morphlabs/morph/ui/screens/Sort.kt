@@ -289,6 +289,17 @@ fun SortPanel(repo: MorphRepo, s: Snapshot, e: Entry, onSorted: (Game.Reward, St
             if (fresh) { Gap(6); Pill("⚡ Fresh: +2 bonus stars") }
         }
     }
+    // Jog my memory: what the SMS says in plain words, when, your history with them, what happened around it.
+    val context = remember(e.id, s) { s.context(e) }
+    if (context.isNotEmpty()) {
+        Gap(10)
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow).padding(14.dp),
+        ) {
+            Text("🧠 Jog my memory", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            for (line in context) Text("• $line", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 3.dp))
+        }
+    }
     Gap(16)
     Text("What was it?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     guess.suggestions.firstOrNull()?.reason?.takeIf { it.isNotEmpty() }?.let {

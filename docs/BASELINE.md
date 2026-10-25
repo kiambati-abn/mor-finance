@@ -193,6 +193,16 @@ One period controls every section: 30d · 3m · 6m · Year · All, or **📅 Ran
 | Unusual spends | What was far bigger than normal for its category (3× the median)? |
 | After money comes in | How much of what arrives is gone within 3 days? |
 
+## Jog my memory (Sort card)
+
+Every Sort card, including the one opened from a notification, shows **🧠 Jog my memory**, worked out from the SMS and your history:
+
+- **What it was, in plain words:** sent to a person (with their number), a shop till, a Paybill and its account (it flags accounts that look like phone numbers, often top-ups), a cash withdrawal, and so on.
+- **When:** "Tuesday morning, 8:50 AM".
+- **Your history with them:** "3rd time. Last: Ksh 150 on 18 Oct. You filed it as 🚌 Transport (2×)", plus "Bigger than usual" or "Smaller than usual".
+- **What happened nearby:** the closest other transaction within 2 hours, e.g. "24 min earlier: received Ksh 2,000 from Mary Njeri".
+- **Where it left you:** the M-Pesa balance after.
+
 ## Morph Academy
 
 A daily lesson of 5 cards (about 2 minutes) from the Home card or Me. Cards about what's happening in your money come first, then reviews you're about to forget (spaced 1/3/7/21/60 days), then new cards. Each card ends with a *Try this* step. Stars, a learning streak, Money IQ and a freedom stage. Details: [ACADEMY.md](ACADEMY.md).
