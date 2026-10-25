@@ -91,7 +91,7 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
     fun who(key: String, name: String, since: Long? = null) = openList(com.morphlabs.morph.ui.TxFilter(name, counterpartyKey = key, from = since, to = to))
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-        BackHeader("Patterns", onBack)
+        BackHeader(com.morphlabs.morph.core.model.Naming.pick("🔮 Money X-ray", "Patterns"), onBack)
         LazyColumn(Modifier.padding(horizontal = 16.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

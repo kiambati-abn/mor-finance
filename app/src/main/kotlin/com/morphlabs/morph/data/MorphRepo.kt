@@ -607,6 +607,11 @@ class MorphRepo private constructor(context: Context) {
         return if (first) LESSON_BONUS else 0
     }
 
+    /** Fun names across the app (on unless you turn them off). */
+    var playful: Boolean
+        get() = meta(KEY_PLAYFUL) != "0"
+        set(on) { setMeta(KEY_PLAYFUL, if (on) "1" else "0"); com.morphlabs.morph.core.model.Naming.playful = on; changed() }
+
     /** Called when you leave the Academy, so stars from cards show up everywhere. */
     fun academyClosed() = changed()
 
@@ -799,6 +804,7 @@ class MorphRepo private constructor(context: Context) {
     }
 
     private fun load(): Snapshot {
+        com.morphlabs.morph.core.model.Naming.playful = meta(KEY_PLAYFUL) != "0"
         val accounts = db.rawQuery("SELECT id, name, emoji, grp, budget, period, role, hint, archived, sort, section FROM accounts ORDER BY sort, id", null).use { c ->
             buildList {
                 while (c.moveToNext()) add(
@@ -876,6 +882,7 @@ class MorphRepo private constructor(context: Context) {
         private const val BONUS_PREFIX = "inbox-zero:"
         private const val LEARN_PREFIX = "learn-day:"
         private const val LESSON_BONUS = 3
+        private const val KEY_PLAYFUL = "playful"
         /** Stored after BONUS_PREFIX, so bonusDays holds "day-done:2026-10-24" for the daily bonus. */
         private const val DAY_PREFIX = "day-done:"
         private const val KEY_BACKUP_URI = "backup_uri"

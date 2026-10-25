@@ -39,6 +39,10 @@ import com.morphlabs.morph.core.academy.Action
 import com.morphlabs.morph.core.academy.Card
 import com.morphlabs.morph.core.academy.Deck
 import com.morphlabs.morph.core.academy.Kind
+import com.morphlabs.morph.core.academy.Level
+import com.morphlabs.morph.core.model.Naming
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import com.morphlabs.morph.core.academy.Outcome
 import com.morphlabs.morph.core.academy.Track
 import com.morphlabs.morph.data.MorphRepo
@@ -67,27 +71,39 @@ fun LearnScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, go: (Action) -
         }
     }
     var lesson by remember { mutableStateOf<List<Card>?>(null) }
+    var lessonIsDaily by remember { mutableStateOf(true) }
     var earned by remember { mutableIntStateOf(0) }
     var celebrate by remember { mutableStateOf(false) }
+    var levelUp by remember { mutableStateOf<String?>(null) }
     DisposableEffect(Unit) { onDispose { repo.academyClosed() } }
     fun canUse(c: Card) = Academy.fill(c.question, data.facts) != null
+    fun levels(p: Map<String, com.morphlabs.morph.core.academy.Progress>) = Track.entries.associateWith { Academy.openLevel(it, Deck.cards, p) }
 
     val current = lesson
     if (current != null) {
+        val before = remember(current) { levels(progress) }
         LessonView(
-            cards = current, facts = data.facts,
+            cards = current, facts = data.facts, day = day,
             onAnswer = { c, outcome, right -> earned += repo.recordCard(c.id, outcome, right); progress = repo.academyProgress() },
             onTry = { a -> go(a) },
-            onFinish = { earned += repo.finishLesson(); lesson = null; celebrate = true },
+            onFinish = {
+                if (lessonIsDaily) earned += repo.finishLesson()
+                // Did any area climb a level during this round?
+                val after = levels(progress)
+                levelUp = Track.entries.firstOrNull { after.getValue(it) > before.getValue(it) }?.let { t ->
+                    val l = Level.of(after.getValue(t)); "${t.emoji} ${t.title}: ${l.emoji} ${l.title} unlocked!"
+                }
+                lesson = null; celebrate = true
+            },
             onQuit = { lesson = null },
         )
     } else Column(Modifier.fillMaxSize()) {
-        BackHeader("📚 Morph Academy", onBack)
-        val open = Academy.unlocked(Deck.cards, progress)
-        val mastery = Academy.mastery(Deck.cards, progress)
+        BackHeader(Naming.pick("🥋 Money Dojo", "📚 Morph Academy"), onBack)
+        val open = levels(progress)
         val streak = Academy.streak(s.learnDays, day)
         val doneToday = day in s.learnDays
-        val next = Academy.session(Deck.cards, progress, day, data.signals, ::canUse)
+        val theme = Academy.themeOf(day)
+        val next = Academy.session(Deck.cards, progress, day, data.signals, ::canUse, extra = doneToday)
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
             item {
                 MorphCard {
@@ -109,56 +125,73 @@ fun LearnScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, go: (Action) -
                     }
                 }
                 Gap()
-                Button(onClick = { earned = 0; lesson = next }, enabled = next.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text("Today is ${theme.emoji} ${theme.title} day", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("A new area every day. Cards about your own money jump the queue.", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Gap(8)
+                Button(onClick = { earned = 0; lessonIsDaily = true; lesson = next }, enabled = next.isNotEmpty(), modifier = Modifier.fillMaxWidth().height(56.dp)) {
                     Text(
                         when {
                             next.isEmpty() -> "All caught up. Come back tomorrow 🌙"
-                            doneToday -> "Extra round · ${next.size} cards"
-                            else -> "Start today's lesson · ${next.size} cards · 2 min"
+                            doneToday -> Naming.pick("💣 One more bomb · ${next.size} cards", "Extra round · ${next.size} cards")
+                            else -> Naming.pick("💣 Today's Bomb · ${next.size} cards · 2 min", "Start today's lesson · ${next.size} cards · 2 min")
                         },
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                if (doneToday) Text("✓ Today's lesson done. Extra rounds earn stars but don't change the streak.",
+                if (doneToday) Text(Naming.pick("💥 Today's bomb defused. Extra rounds earn stars; the streak is safe.", "✓ Today's lesson done. Extra rounds earn stars but don't change the streak."),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 6.dp))
-                SectionTitle("Tracks")
+                SectionTitle("Areas · tap one to play it now")
             }
             items(Track.entries) { t ->
-                val cards = Deck.cards.filter { it.track == t }
-                val seen = cards.count { (progress[it.id]?.seen ?: 0) > 0 }
-                val unlocked = t in open
-                Column(Modifier.padding(vertical = 8.dp)) {
+                val level = Level.of(open.getValue(t))
+                val (known, total) = Academy.levelCount(t, level.number, Deck.cards, progress)
+                val leftHere = Deck.cards.count { it.track == t && it.level <= level.number && (progress[it.id]?.seen ?: 0) == 0 && (it.kind != com.morphlabs.morph.core.academy.Kind.YOU || canUse(it)) }
+                Column(
+                    Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                        .clickable(enabled = leftHere > 0) {
+                            earned = 0; lessonIsDaily = false
+                            lesson = Academy.session(Deck.cards, progress, day, emptySet(), ::canUse, focus = t, extra = true).filter { it.track == t }
+                        }
+                        .padding(vertical = 8.dp, horizontal = 4.dp),
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (unlocked) t.emoji else "🔒", fontSize = 20.sp)
+                        Text(t.emoji, fontSize = 20.sp)
                         Spacer(Modifier.width(10.dp))
-                        Text(t.title, Modifier.weight(1f), fontWeight = FontWeight.SemiBold,
-                            color = if (unlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$seen/${cards.size}", style = MaterialTheme.typography.bodySmall)
+                        Column(Modifier.weight(1f)) {
+                            Text(t.title + if (t == theme) "  · today" else "", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                "${level.emoji} ${level.title}" + (if (total > 0) " · $known/$total known" else "") +
+                                    if (level.number < Level.entries.size) " · next level at ${kotlin.math.ceil(total * Academy.LEVEL_UP).toInt()}" else "",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(if (leftHere > 0) "Play →" else "✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     }
                     Gap(4)
-                    LinearProgressIndicator(progress = { mastery[t] ?: 0f }, modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
+                    LinearProgressIndicator(progress = { if (total == 0) 1f else known / total.toFloat() }, modifier = Modifier.fillMaxWidth().padding(start = 30.dp),
                         color = LocalMorph.current.gold, trackColor = LocalMorph.current.track)
-                    if (!unlocked) Text("Opens when you've seen half of the track before.", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 30.dp, top = 2.dp))
                 }
             }
             item {
                 Gap()
                 Text(
-                    "How it works: each card comes back just before you'd forget it (1, 3, 7, 21, then 60 days). " +
-                        "Cards about your own money jump the queue. Figures marked ⏳ change over time, so check today's rates before acting.",
+                    "How it works: 2–3 new cards a day plus reviews. Each card comes back just before you'd forget it " +
+                        "(1, 3, 7, 21, 60, 120, then 240 days). Each area has 5 levels: 🐣 Rookie → 🔧 Hustler → 🎯 Pro → 🦈 Shark → 👑 Legend. " +
+                        "A level opens once you know 60% of the one below (a card counts as known after you get it right twice). " +
+                        "Figures marked ⏳ change over time, so check today's rates before acting.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Gap(88)
             }
         }
     }
-    if (celebrate) Celebration(earned, Academy.streak(s.learnDays + day, day), "Lesson done · Money IQ ${Academy.moneyIq(Deck.cards, progress)}") { celebrate = false }
+    if (celebrate) Celebration(earned, Academy.streak(s.learnDays + day, day), levelUp ?: "Money IQ ${Academy.moneyIq(Deck.cards, progress)}") { celebrate = false; levelUp = null }
 }
 
 @Composable
 private fun LessonView(
-    cards: List<Card>, facts: Map<String, String>,
+    cards: List<Card>, facts: Map<String, String>, day: java.time.LocalDate,
     onAnswer: (Card, Outcome, Boolean) -> Unit, onTry: (Action) -> Unit, onFinish: () -> Unit, onQuit: () -> Unit,
 ) {
     var index by remember { mutableIntStateOf(0) }
@@ -172,23 +205,27 @@ private fun LessonView(
         }
         Gap()
         AnimatedContent(targetState = index, label = "card") { i ->
-            CardView(cards[i], facts, onAnswer = { o, r -> onAnswer(cards[i], o, r) }, onTry = onTry,
+            CardView(cards[i], facts, day, onAnswer = { o, r -> onAnswer(cards[i], o, r) }, onTry = onTry,
                 onNext = { if (i + 1 < cards.size) index = i + 1 else onFinish() }, last = i + 1 == cards.size)
         }
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun CardView(card: Card, facts: Map<String, String>, onAnswer: (Outcome, Boolean) -> Unit, onTry: (Action) -> Unit, onNext: () -> Unit, last: Boolean) {
+private fun CardView(card: Card, facts: Map<String, String>, day: java.time.LocalDate, onAnswer: (Outcome, Boolean) -> Unit, onTry: (Action) -> Unit, onNext: () -> Unit, last: Boolean) {
     // For a quiz: the option picked. For a concept: whether the answer is showing. YOU cards show everything at once.
     var picked by remember(card.id) { mutableStateOf<Int?>(null) }
     var revealed by remember(card.id) { mutableStateOf(card.kind == Kind.YOU) }
     var answered by remember(card.id) { mutableStateOf(false) }
+    // Options in a fresh order each day, so you learn the answer, not its position.
+    val order = remember(card.id, day) { card.options.indices.shuffled(kotlin.random.Random(card.id.hashCode() * 31 + day.toEpochDay().toInt())) }
     val good = LocalMorph.current.good
     val bad = LocalMorph.current.bad
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Pill("${card.track.emoji} ${card.track.title}")
+            Level.of(card.level).let { Pill("${it.emoji} ${it.title}") }
             if (card.kind == Kind.YOU) Pill("📊 Your numbers")
             if (card.timeSensitive) Pill("⏳ Check current rates")
         }
@@ -196,7 +233,8 @@ private fun CardView(card: Card, facts: Map<String, String>, onAnswer: (Outcome,
         Text(Academy.fill(card.question, facts) ?: card.question, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Gap(16)
         when (card.kind) {
-            Kind.QUIZ -> card.options.forEachIndexed { i, opt ->
+            Kind.QUIZ -> order.forEach { i ->
+                val opt = card.options[i]
                 val color = when {
                     picked == null -> null
                     i == card.correct -> good
@@ -226,7 +264,15 @@ private fun CardView(card: Card, facts: Map<String, String>, onAnswer: (Outcome,
             Gap()
             if (card.kind == Kind.QUIZ) Text(if (picked == card.correct) "Right! +2 ⭐" else "Not quite. Here's why:", fontWeight = FontWeight.SemiBold,
                 color = if (picked == card.correct) good else bad)
-            MorphCard { Text(card.answer, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyLarge) }
+            MorphCard {
+                Column(Modifier.padding(16.dp)) {
+                    Text(card.answer, style = MaterialTheme.typography.bodyLarge)
+                    card.source?.let {
+                        Gap(6)
+                        Text("📖 $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             card.tryThis?.let { t ->
                 Gap(8)
                 MorphCard(onClick = if (card.action != Action.NONE) ({ onTry(card.action) }) else null) {

@@ -7,32 +7,54 @@ A daily 2-minute game inside Morph for understanding money deeply: personal fina
 > rates and rules change, so anything time-sensitive is marked **(check current)**.
 > Researched October 2026.
 
-## How it plays (built, v1)
+## How it plays (v2: a lifetime game)
 
-Open it from the **📚 Today's lesson** card on Home, or **Me → Morph Academy**.
+Open it from the **💣 Today's Bomb** card on Home, or **Me → 🥋 Money Dojo**. With fun names off, these are **Today's lesson** and **Morph Academy**.
 
-- **Daily lesson: 5 cards, about 2 minutes.** They're picked in this order:
-  1. **Just in time:** one new card about something happening in *your* money right now (Fuliza used this week, money just came in, high fees this month, a big spend, debts, no safety buffer, a low savings rate). Learning is most useful right before you use it, because education that isn't used fades fast.
-  2. **Reviews:** up to 3 cards you're about to forget, most overdue first.
-  3. **New cards** from the tracks you've opened, in order.
-- **Three card types:**
-  - **Quiz:** pick an answer. You see right away whether it was right, and why.
-  - **Concept:** think of your answer, tap *Show answer*, then rate yourself: 😕 *No idea* · 🤔 *Sort of* · 😎 *Knew it*.
-  - **📊 You:** built from your own numbers ("You paid Ksh 420 in fees this month, about Ksh 15,000 a year"). Morph only shows one when it has the numbers it needs.
-- **Spaced repetition:** your answer decides when a card comes back: 1 → 1 → 3 → 7 → 21 → 60 days. *No idea* starts it over, and *Sort of* keeps it close. Retrieval with feedback, spaced out, is one of the best-proven ways to remember.
-- **👉 Try this:** most cards end with one small real step. Many have an **Open →** button that takes you to Budgets, Accounts or Patterns, so the lesson turns into action.
+- **12 areas, one theme a day.** The areas rotate, so each comes round about every 12 days:
+
+  | Area (fun name) | Plain name |
+  |---|---|
+  | 🧱 Pesa 101 | Money basics |
+  | 👹 Madeni Monsters | Debt |
+  | 🇰🇪 Kenyan Toolbox | Kenyan money tools |
+  | 📈 Make Money Work | Investing |
+  | 🦋 Freedom Road | Financial freedom |
+  | 🚀 Boss Moves | Building a business |
+  | 🦈 Shark Tank | Deals & valuation |
+  | 🧠 Mind Games | Money psychology |
+  | 🌍 Big Picture | Economy & markets |
+  | 🛡️ Shield Up | Insurance, scams & safety |
+  | 💼 Hustle Up | Earning more |
+  | 🏠 Shamba & Keys | Land, homes & big buys |
+
+  You can also tap any area to play it right now.
+- **5 levels per area, and it gets harder as you play:** 🐣 Rookie → 🔧 Hustler → 🎯 Pro → 🦈 Shark → 👑 Legend.
+  - Rookie covers basics.
+  - Hustler applies them with simple numbers.
+  - Pro has multi-step maths and trade-offs.
+  - Shark covers what professionals use.
+  - Legend goes into research findings, history and case studies.
+  - A level opens once you **know** 60% of the one below. A card counts as known after you get it right twice.
+- **Daily pace:** 2–3 new cards plus up to 3 reviews, about 2 minutes. This makes ~700 cards last about a year of new material. Reviews never stop: a card comes back at 1, 3, 7, 21, 60, 120, then 240 days, so it's a lifetime habit. Extra rounds ("💣 One more bomb") let you go faster.
+- **Just in time:** if something just happened in your money (Fuliza, money in, high fees, a big spend, debts, no safety fund, low savings), a card about it jumps the queue, from any area.
+- **Card types:**
+  - **Quiz:** options are shuffled daily, so you learn the answer, not its position.
+  - **Concept:** reveal the answer, then rate yourself.
+  - **📊 Your numbers:** filled in from your own data.
+  - Every fact shows its **📖 source**, and figures that change carry **⏳ Check current rates**.
+- **👉 Try this** turns a card into one real step, often with an **Open →** button into Morph.
 - **Rewards:**
-  - +1 ⭐ per card and +1 for a right quiz answer.
-  - +3 ⭐ and a 🔥 learning-streak day for finishing the daily lesson. Extra rounds still earn stars.
-  - **Money IQ** (0–100) and a mastery bar per track. A card counts fully once you've known it 3 times in a row.
-- **Tracks unlock in order:** the next one opens when you've seen half of the one before. Cards about your own money skip the queue.
-- **🦋 Freedom stage** is shown at the top: Steady → Debt-free → Safety net → Growing → Choice → Free, worked out from your savings, debts, fixed costs and net worth.
-- Cards with figures that change (rates, fees, tax) carry **⏳ Check current rates**.
-- Progress is saved in your backups. **Start over** in Me doesn't erase what you've learned.
+  - Stars: +1 per card, +1 for a right quiz, +3 for the daily lesson.
+  - A 🔥 streak.
+  - Money IQ (0–100).
+  - A level badge per area, with a celebration when you level up.
+  - Your 🦋 freedom stage.
+- **Fun names** run through the whole app: Pockets, Stash, IOUs to chase, Madeni Monsters, Money Rain, Must-pays, Treats & extras, Bahasha, mysteries to solve, jobless shillings, Money X-ray. Turn them off in **Me → Look & feel**. Search always understands both the fun and the plain names.
 
-**Later (not built yet):** a weekly Shark Tank case, a 🚀 Business fund with runway, and a problem journal.
+Each area's full outline and sources are in [docs/academy/](academy/).
 
-## The path (8 tracks)
+## The first 8 areas (starter cards, all 🐣 Rookie)
 
 | # | Track | You'll be able to… |
 |---|---|---|
@@ -96,7 +118,7 @@ Open it from the **📚 Today's lesson** card on Home, or **Me → Morph Academy
 3. **Concept: Ziidi.**
    Safaricom's MMF inside M-Pesa (*334# or the M-Pesa app). It starts from Ksh 100, interest is daily, and moving money in and out is free. It's run with licensed fund managers and regulated by CMA. A Shari'ah-compliant version launched in October 2026.
 4. **Concept: Treasury bills.**
-   Short loans to the government: 91, 182 or 364 days. You buy directly through the CBK's **DhowCSD** app and pay with M-Pesa. The usual minimum is Ksh 100,000 (check current).
+   Short loans to the government: 91, 182 or 364 days. You buy directly through the CBK's **DhowCSD** app and pay with M-Pesa. Non-competitive bids start at Ksh 50,000 (check current).
 5. **Concept: Treasury bonds.**
    Longer government loans (years) that pay interest twice a year. Some recent retail issues allowed Ksh 50,000 non-competitive bids, and bond interest has a withholding tax (check each prospectus).
 6. **Concept: Competitive vs non-competitive bids.**
@@ -223,8 +245,8 @@ Open it from the **📚 Today's lesson** card on Home, or **Me → Morph Academy
 
 ## How it's built
 
-- `core/.../academy/Deck.kt`: every card (id, track, kind, question, answer, options, the *Try this* step, signals, ⏳ flag). YOU cards use placeholders such as `{fees_month}`, `{savings}`, `{freedom_number}`, `{runway}` and `{stage}`.
-- `core/.../academy/Academy.kt`: the rules (spacing boxes, today's session, unlocking, mastery, Money IQ, streak, filling placeholders).
+- `core/.../academy/Deck.kt` + `academy/deck/<Area>Cards.kt` (one file per area; builders in `deck/Build.kt`): every card, with its level (1–5) and source (id, track, kind, question, answer, options, the *Try this* step, signals, ⏳ flag). YOU cards use placeholders such as `{fees_month}`, `{savings}`, `{freedom_number}`, `{runway}` and `{stage}`.
+- `core/.../academy/Academy.kt`: the rules (spacing boxes, daily theme, levels, today's session, mastery, Money IQ, streak, filling placeholders).
 - `core/.../academy/MoneyFacts.kt`: turns your numbers into placeholder values, your freedom stage and the money signals.
 - `app/.../data/AcademyData.kt`: reads those numbers from your ledger. `academy_progress` table (DB v5).
 - Tests: `core/src/test/.../academy/AcademyTest.kt`.

@@ -45,7 +45,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
-enum class Tab(val label: String, val emoji: String) { HOME("Home", "🏠"), SORT("Sort", "⭐"), ENVELOPES("Budgets", "✉️"), ME("Me", "🦋") }
+enum class Tab(private val plain: String, val emoji: String, private val fun_: String) {
+    HOME("Home", "🏠", "Home"), SORT("Sort", "⭐", "Sort"), ENVELOPES("Budgets", "✉️", "Bahasha"), ME("Me", "🦋", "Me");
+
+    val label: String get() = com.morphlabs.morph.core.model.Naming.pick(fun_, plain)
+}
 
 enum class Page { ACCOUNTS, TRANSACTIONS, PATTERNS, LEARN }
 

@@ -101,7 +101,7 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                     Text(warnings.first().level.icon, fontSize = 24.sp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("${warnings.size} budget${if (warnings.size > 1) "s" else ""} running low", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(com.morphlabs.morph.core.model.Naming.pick("${warnings.size} budget${if (warnings.size > 1) "s" else ""} on a diet 🥗", "${warnings.size} budget${if (warnings.size > 1) "s" else ""} running low"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(
                             warnings.take(3).joinToString(" · ") { w -> "${s.byId[w.accountId]?.label} ${if (w.left < 0) "over ${Money.format(-w.left)}" else "${Money.format(w.left)} left"}" },
                             style = MaterialTheme.typography.bodySmall,
@@ -118,8 +118,8 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                     Text("✉️", fontSize = 26.sp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("${Money.format(d.toAssign ?: 0)} to assign", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        Text("Give it a job before it disappears.", style = MaterialTheme.typography.bodySmall)
+                        Text(com.morphlabs.morph.core.model.Naming.pick("${Money.format(d.toAssign ?: 0)} of jobless shillings", "${Money.format(d.toAssign ?: 0)} to assign"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(com.morphlabs.morph.core.model.Naming.pick("Give them jobs before they wander off.", "Give it a job before it disappears."), style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Fill →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
@@ -132,7 +132,7 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                     Text("⭐", fontSize = 28.sp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("${s.pending.size} to sort", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(com.morphlabs.morph.core.model.Naming.pick("${s.pending.size} mysteries to solve 🕵️", "${s.pending.size} to sort"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text("One tap each. Fresh ones earn bonus stars.", style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Go →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -146,16 +146,16 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
             Gap()
             MorphCard(onClick = goLearn) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("📚", fontSize = 26.sp)
+                    Text(com.morphlabs.morph.core.model.Naming.pick("💣", "📚"), fontSize = 26.sp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(if (doneToday) "Lesson done ✓" else "Today's lesson", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(if (doneToday) com.morphlabs.morph.core.model.Naming.pick("💥 Bomb defused ✓", "Lesson done ✓") else com.morphlabs.morph.core.model.Naming.pick("Today's Bomb", "Today's lesson"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(
-                            if (doneToday) "🔥 $streak-day learning streak. See you tomorrow." else "5 cards · 2 min" + if (streak > 0) " · 🔥 $streak-day streak" else "",
+                            if (doneToday) "🔥 $streak-day learning streak. See you tomorrow." else "Today: ${com.morphlabs.morph.core.academy.Academy.themeOf(d.today).let { it.emoji + " " + it.title }} · 2 min" + if (streak > 0) " · 🔥 $streak" else "",
                             style = MaterialTheme.typography.bodySmall,
                         )
                     }
-                    Text(if (doneToday) "Academy →" else "Learn →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(if (doneToday) com.morphlabs.morph.core.model.Naming.pick("Dojo →", "Academy →") else com.morphlabs.morph.core.model.Naming.pick("Drop it →", "Learn →"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

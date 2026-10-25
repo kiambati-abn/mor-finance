@@ -23,6 +23,18 @@ import com.morphlabs.morph.core.academy.Track.FREEDOM
 import com.morphlabs.morph.core.academy.Track.INVESTING
 import com.morphlabs.morph.core.academy.Track.KENYA_TOOLS
 import com.morphlabs.morph.core.academy.Track.MIND
+import com.morphlabs.morph.core.academy.deck.DealsCards
+import com.morphlabs.morph.core.academy.deck.DebtCards
+import com.morphlabs.morph.core.academy.deck.EarningCards
+import com.morphlabs.morph.core.academy.deck.EconomyCards
+import com.morphlabs.morph.core.academy.deck.FoundationsCards
+import com.morphlabs.morph.core.academy.deck.FounderCards
+import com.morphlabs.morph.core.academy.deck.FreedomCards
+import com.morphlabs.morph.core.academy.deck.InvestingCards
+import com.morphlabs.morph.core.academy.deck.KenyaToolsCards
+import com.morphlabs.morph.core.academy.deck.MindCards
+import com.morphlabs.morph.core.academy.deck.PropertyCards
+import com.morphlabs.morph.core.academy.deck.ProtectionCards
 
 /**
  * The starter deck (researched October 2026; see docs/ACADEMY.md for sources). Education, not
@@ -41,7 +53,7 @@ object Deck {
     private fun you(id: String, t: Track, q: String, a: String, tryThis: String? = null, action: Action = Action.NONE, signals: Set<Signal> = emptySet()) =
         Card(id, t, YOU, q, a, emptyList(), -1, tryThis, action, signals)
 
-    val cards: List<Card> = listOf(
+    private val starter: List<Card> = listOf(
         // ---- 1 · Foundations ---------------------------------------------------------------
         quiz("f-budget", FOUNDATIONS, "What is a budget really for?",
             listOf("Spending less on everything", "Giving every shilling a job before the month spends it", "Tracking what you already spent"), 1,
@@ -127,7 +139,7 @@ object Deck {
             "Try auto-investing a small amount after each transaction.", timeSensitive = true),
         quiz("k-tbill", KENYA_TOOLS, "Treasury bills are…",
             listOf("Loans to the government for 91, 182 or 364 days", "Shares in the CBK", "Electricity bills"), 0,
-            "You lend to the government short-term, buying through the CBK's DhowCSD app and paying by M-Pesa. The usual minimum is Ksh 100,000 (check current).",
+            "You lend to the government short-term, buying through the CBK's DhowCSD app and paying by M-Pesa. Non-competitive bids start at Ksh 50,000 (CBK 2026; check current).",
             timeSensitive = true),
         quiz("k-noncomp", KENYA_TOOLS, "For a first T-bill or bond, most individuals choose…",
             listOf("A competitive bid", "A non-competitive bid", "A broker loan"), 1,
@@ -301,5 +313,13 @@ object Deck {
             signals = setOf(FULIZA_RECENT, BIG_SPEND)),
     )
 
-    fun byId(id: String): Card? = cards.firstOrNull { it.id == id }
+    /** Every card: the starter set (all level 1) plus each area's file in deck/. */
+    val cards: List<Card> = starter + listOf(
+        FoundationsCards.cards, DebtCards.cards, KenyaToolsCards.cards, InvestingCards.cards, FreedomCards.cards, FounderCards.cards,
+        DealsCards.cards, MindCards.cards, EconomyCards.cards, ProtectionCards.cards, EarningCards.cards, PropertyCards.cards,
+    ).flatten()
+
+    private val index: Map<String, Card> by lazy { cards.associateBy { it.id } }
+
+    fun byId(id: String): Card? = index[id]
 }

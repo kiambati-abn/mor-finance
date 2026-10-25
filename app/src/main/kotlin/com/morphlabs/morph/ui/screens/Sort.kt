@@ -357,7 +357,7 @@ fun SearchableAccounts(s: Snapshot, outgoing: Boolean?, exclude: Set<Long> = emp
             for (a in recent) OutlinedButton(onClick = { onPick(a) }, shape = RoundedCornerShape(14.dp)) { Text(a.label) }
         }
     }
-    val matching = if (needle.isEmpty()) s.accounts else s.accounts.filter { it.name.lowercase().contains(needle) || it.typeLabel.lowercase().contains(needle) }
+    val matching = if (needle.isEmpty()) s.accounts else s.accounts.filter { it.matches(needle) }
     AccountGrid(matching, outgoing, exclude, onPick)
 }
 

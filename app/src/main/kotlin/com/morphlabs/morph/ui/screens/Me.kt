@@ -195,6 +195,20 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             }
         }
         item {
+            SectionTitle("Look & feel")
+            MorphCard {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("😄 Fun names", fontWeight = FontWeight.SemiBold)
+                        Text("Madeni Monsters instead of Debts, 💣 Today's Bomb instead of Today's lesson, and more. Off = plain names.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    var playful by remember { mutableStateOf(repo.playful) }
+                    androidx.compose.material3.Switch(checked = playful, onCheckedChange = { on -> playful = on; Thread { repo.playful = on }.start() })
+                }
+            }
+        }
+        item {
             SectionTitle("Budget alerts")
             MorphCard {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -249,7 +263,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                 }
             }
         }
-        if (d.insights.isNotEmpty()) item { SectionTitle("What your money says", action = "Patterns", onAction = goPatterns) }
+        if (d.insights.isNotEmpty()) item { SectionTitle(com.morphlabs.morph.core.model.Naming.pick("Your money is talking 🗣️", "What your money says"), action = "Patterns", onAction = goPatterns) }
         items(d.insights, key = { it.id }) { i -> InsightCard(i, s); Gap(8) }
         item {
             val month = d.monthByAccount()
@@ -275,8 +289,8 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             SectionTitle("Settings")
             MorphCard {
                 Column(Modifier.padding(vertical = 4.dp)) {
-                    SettingRow("📚  Morph Academy: learn money, 2 min a day", goLearn)
-                    SettingRow("🔍  Patterns: deep look at your money", goPatterns)
+                    SettingRow(com.morphlabs.morph.core.model.Naming.pick("🥋  Money Dojo: today's bomb & your levels", "📚  Morph Academy: learn money, 2 min a day"), goLearn)
+                    SettingRow(com.morphlabs.morph.core.model.Naming.pick("🔮  Money X-ray: deep look at your money", "🔍  Patterns: deep look at your money"), goPatterns)
                     SettingRow("🗂️  Accounts & budgets", goAccounts)
                     SettingRow("📜  All transactions", goAll)
                     SettingRow("📅  Tracking starts: ${repo.startDate?.let { java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate().let { d -> java.time.format.DateTimeFormatter.ofPattern("d MMM yyyy", java.util.Locale.ENGLISH).format(d) } } ?: "from the beginning"}") { startDialog = true }
@@ -288,7 +302,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                     }
                     SettingRow("💾  Back up to a file (Drive, etc.)") { exportLauncher.launch("morph-backup-${d.today}.json") }
                     SettingRow("♻️  Restore from a backup") { importLauncher.launch(arrayOf("application/json", "*/*")) }
-                    SettingRow("🧹  Start over…") { startOver = true }
+                    SettingRow(com.morphlabs.morph.core.model.Naming.pick("🧹  Fresh start…", "🧹  Start over…")) { startOver = true }
                     HorizontalDivider()
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Theme", Modifier.weight(1f))

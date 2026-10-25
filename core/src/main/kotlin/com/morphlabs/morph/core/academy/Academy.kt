@@ -3,16 +3,37 @@ package com.morphlabs.morph.core.academy
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-/** The eight learning tracks, in the order they unlock. */
-enum class Track(val title: String, val emoji: String) {
-    FOUNDATIONS("Foundations", "🧱"),
-    DEBT("Debt", "⛓️"),
-    KENYA_TOOLS("Kenyan money tools", "🇰🇪"),
-    INVESTING("Investing", "📈"),
-    FREEDOM("Financial freedom", "🦋"),
-    FOUNDER("Founder", "🚀"),
-    DEALS("Deals (Shark Tank)", "🦈"),
-    MIND("Money mind", "🧠"),
+/**
+ * The twelve areas. Each day has a theme area (they rotate), and each area has five levels.
+ * [funTitle] is what the app shows when fun names are on.
+ */
+enum class Track(val plainTitle: String, val emoji: String, val funTitle: String) {
+    FOUNDATIONS("Money basics", "🧱", "Pesa 101"),
+    DEBT("Debt", "👹", "Madeni Monsters"),
+    KENYA_TOOLS("Kenyan money tools", "🇰🇪", "Kenyan Toolbox"),
+    INVESTING("Investing", "📈", "Make Money Work"),
+    FREEDOM("Financial freedom", "🦋", "Freedom Road"),
+    FOUNDER("Building a business", "🚀", "Boss Moves"),
+    DEALS("Deals & valuation", "🦈", "Shark Tank"),
+    MIND("Money psychology", "🧠", "Mind Games"),
+    ECONOMY("Economy & markets", "🌍", "Big Picture"),
+    PROTECTION("Insurance, scams & safety", "🛡️", "Shield Up"),
+    EARNING("Earning more", "💼", "Hustle Up"),
+    PROPERTY("Land, homes & big buys", "🏠", "Shamba & Keys"),
+    ;
+
+    val title: String get() = com.morphlabs.morph.core.model.Naming.pick(funTitle, plainTitle)
+}
+
+/** How deep a card goes. You climb an area's levels by actually knowing the cards. */
+enum class Level(val title: String, val emoji: String) {
+    ROOKIE("Rookie", "🐣"), HUSTLER("Hustler", "🔧"), PRO("Pro", "🎯"), SHARK("Shark", "🦈"), LEGEND("Legend", "👑");
+
+    val number: Int get() = ordinal + 1
+
+    companion object {
+        fun of(n: Int): Level = entries[(n - 1).coerceIn(0, entries.size - 1)]
+    }
 }
 
 enum class Kind { CONCEPT, QUIZ, YOU }
@@ -41,6 +62,10 @@ data class Card(
     val signals: Set<Signal> = emptySet(),
     /** Figures that change over time: the app shows "check current". */
     val timeSensitive: Boolean = false,
+    /** 1 (Rookie) .. 5 (Legend). */
+    val level: Int = 1,
+    /** Where the fact comes from, short ("CBK, 2026"). */
+    val source: String? = null,
 )
 
 /** Your history with one card. Boxes 0..5; higher = better known, seen less often. */
@@ -50,12 +75,16 @@ enum class Outcome { KNEW, UNSURE, NO_IDEA }
 
 object Academy {
 
-    /** Days until the next review for each box (spaced retrieval; fixed gaps work about as well as fancy ones). */
-    val intervals = listOf(1L, 1L, 3L, 7L, 21L, 60L)
+    /** Days until the next review for each box (spaced retrieval). Long gaps at the top make it a lifetime habit. */
+    val intervals = listOf(1L, 1L, 3L, 7L, 21L, 60L, 120L, 240L)
+    private val topBox = intervals.size - 1
+
+    /** Share of a level's cards you must know (seen right twice) before the next level opens. */
+    const val LEVEL_UP = 0.6
 
     fun review(p: Progress, outcome: Outcome, today: LocalDate): Progress {
         val box = when (outcome) {
-            Outcome.KNEW -> (p.box + 1).coerceAtMost(5)
+            Outcome.KNEW -> (p.box + 1).coerceAtMost(topBox)
             Outcome.UNSURE -> p.box.coerceIn(1, 2)
             Outcome.NO_IDEA -> 0
         }
@@ -68,41 +97,66 @@ object Academy {
         )
     }
 
-    /** A track opens once you've seen half of the one before it (Foundations is always open). */
-    fun unlocked(deck: List<Card>, progress: Map<String, Progress>): Set<Track> {
-        val open = mutableSetOf(Track.FOUNDATIONS)
-        for (i in 1 until Track.entries.size) {
-            val prev = deck.filter { it.track == Track.entries[i - 1] }
-            val seen = prev.count { (progress[it.id]?.seen ?: 0) > 0 }
-            if (prev.isEmpty() || seen * 2 >= prev.size) open += Track.entries[i] else break
+    /** Today's theme area: they take turns, one a day, so every area comes round about once every 12 days. */
+    fun themeOf(day: LocalDate): Track = Track.entries[Math.floorMod(day.toEpochDay(), Track.entries.size.toLong()).toInt()]
+
+    fun known(p: Progress?): Boolean = (p?.box ?: 0) >= 2
+
+    /** The highest level open in [track]: level n+1 opens once you know 60% of level n. */
+    fun openLevel(track: Track, deck: List<Card>, progress: Map<String, Progress>): Int {
+        var level = 1
+        while (level < Level.entries.size) {
+            val cards = deck.filter { it.track == track && it.level == level }
+            if (cards.isNotEmpty() && cards.count { known(progress[it.id]) } < cards.size * LEVEL_UP) break
+            level++
         }
-        return open
+        return level
+    }
+
+    /** (known, total) at a level of an area. */
+    fun levelCount(track: Track, level: Int, deck: List<Card>, progress: Map<String, Progress>): Pair<Int, Int> {
+        val cards = deck.filter { it.track == track && it.level == level }
+        return cards.count { known(progress[it.id]) } to cards.size
     }
 
     /**
-     * Today's cards: first a new card that fits something happening in your money right now,
-     * then reviews that are due, then new cards in curriculum order. [canUse] says whether a YOU
-     * card can be filled with your data.
+     * Today's cards, at most [size]:
+     * 1. a new card about something happening in your money right now (just in time),
+     * 2. up to 3 reviews you're about to forget,
+     * 3. new cards from [focus] (today's theme), easiest open level first, then from the next areas.
+     * Only 2–3 new cards a day, so the deck lasts and sticks. [extra] rounds are all new cards.
      */
     fun session(
         deck: List<Card>, progress: Map<String, Progress>, today: LocalDate, signals: Set<Signal>,
-        canUse: (Card) -> Boolean = { true }, size: Int = 5,
+        canUse: (Card) -> Boolean = { true }, focus: Track = themeOf(today), extra: Boolean = false, size: Int = 5,
     ): List<Card> {
-        val open = unlocked(deck, progress)
-        val usable = deck.filter { (it.kind != Kind.YOU || canUse(it)) }
-        val fresh = usable.filter { (progress[it.id]?.seen ?: 0) == 0 }
+        val open = Track.entries.associateWith { openLevel(it, deck, progress) }
+        val fresh = deck.filter { c ->
+            (progress[c.id]?.seen ?: 0) == 0 && c.level <= open.getValue(c.track) && (c.kind != Kind.YOU || canUse(c))
+        }
         val out = mutableListOf<Card>()
-        // 1. Just in time: a card about what's happening in your money, even from a later track.
         fresh.firstOrNull { c -> c.signals.any { it in signals } }?.let { out += it }
-        // 2. Reviews that are due, most overdue first (at most 3, so there's always something new).
-        out += usable.filter { c -> progress[c.id]?.let { p -> p.seen > 0 && p.due != null && !p.due.isAfter(today) } == true && c !in out }
-            .sortedBy { progress[it.id]!!.due }.take(3)
-        // 3. New cards from open tracks, in order.
-        out += fresh.filter { it.track in open && it !in out }.take(size - out.size)
-        return out.take(size)
+        val reviews = if (extra) emptyList() else deck.filter { c ->
+            c !in out && (c.kind != Kind.YOU || canUse(c)) &&
+                progress[c.id]?.let { p -> p.seen > 0 && p.due != null && !p.due.isAfter(today) } == true
+        }.sortedBy { progress[it.id]!!.due }.take(3)
+        out += reviews
+        val newLimit = when {
+            extra -> size
+            reviews.size < 2 -> 3
+            else -> 2
+        }
+        val order = Track.entries.let { t -> (t.indexOf(focus) until t.indexOf(focus) + t.size).map { t[it % t.size] } }
+        for (track in order) {
+            for (c in fresh.filter { it.track == track }.sortedBy { it.level }) {
+                if (out.size >= size || out.count { it !in reviews } >= newLimit) return out
+                if (c !in out) out += c
+            }
+        }
+        return out
     }
 
-    /** 0..1 per track: how well you know it (a card counts fully once it reaches box 3). */
+    /** 0..1 per area: how well you know it (a card counts fully once known three times). */
     fun mastery(deck: List<Card>, progress: Map<String, Progress>): Map<Track, Float> =
         Track.entries.associateWith { t ->
             val cards = deck.filter { it.track == t }

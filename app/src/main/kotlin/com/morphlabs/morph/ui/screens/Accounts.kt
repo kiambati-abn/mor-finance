@@ -73,7 +73,7 @@ fun AccountsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit) {
     val needle = query.trim().lowercase()
     val shown = s.accounts.filter { a ->
         a.group != AccountGroup.SYSTEM && (showArchived || !a.archived) &&
-            (needle.isEmpty() || a.name.lowercase().contains(needle) || a.typeLabel.lowercase().contains(needle)) &&
+            a.matches(needle) &&
             when (type) {
                 "spend" -> a.type == com.morphlabs.morph.core.model.AccountType.EXPENSE
                 "save" -> a.group == AccountGroup.SAVINGS || a.group == AccountGroup.OWED_TO_ME

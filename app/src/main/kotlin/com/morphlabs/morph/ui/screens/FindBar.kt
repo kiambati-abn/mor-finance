@@ -37,7 +37,7 @@ class FindState {
     /** [low]: whether this one is running low or over. */
     fun matches(a: Account, low: Boolean): Boolean {
         val q = query.trim().lowercase()
-        val byText = q.isEmpty() || a.name.lowercase().contains(q) || a.typeLabel.lowercase().contains(q)
+        val byText = a.matches(q)
         val byType = when (filter) {
             "spend" -> a.type == AccountType.EXPENSE
             "save" -> a.type == AccountType.ASSET || a.type == AccountType.LIABILITY
