@@ -185,10 +185,16 @@ Welcome → Permissions → Battery → Bring in your history → Balances. **�
 
 ## Patterns screen
 
-One period controls every section: 30d · 3m · 6m · Year · All, or **📅 Range** (pick a from and a to date). The chosen dates, number of days and total spent show under the chips. "This month vs your usual" became **"This period vs the one before"**: the same number of days just before the range.
+One period controls every section. It always has a **start date** and an **end date**:
+
+- **Presets** fill them in: 7 days · 30 days · This month · Last month · 3 months · 6 months · This year · All time.
+- **From 📅 → To 📅:** tap either date to pick it on a calendar. If you pick an end before the start, they swap.
+- **◀ Earlier / Later ▶** move the same-length window back or forward. Whole months stay whole months, so "Last month" → ◀ gives the month before.
+- The number of days and the total spent show under the dates. "This month vs your usual" became **"This period vs the one before"**: the same number of days just before the range.
 
 | Section | Question it answers |
 |---|---|
+| Where your money went | Which categories, types or people & places took it? (Where), and on which days, weeks or months? (When). Every bar opens its transactions. |
 | Spending by month | Am I spending more over time? |
 | This month vs your usual | Which category is off this month? (fair: same number of days from the last 3 months) |
 | When you spend | Which days and times cost me most? |

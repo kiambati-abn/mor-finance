@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,26 +49,50 @@ private val dayFmt = DateTimeFormatter.ofPattern("EEE d MMM", Locale.ENGLISH)
 @Composable
 fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccount: Account? = null) {
     val today = repo.dayOf(System.currentTimeMillis())
-    // The period every section follows: a preset, or a custom from–to range.
+    // The period every section follows: a start date and an end date. Presets just fill them in.
     var preset by rememberSaveable { mutableStateOf("90") }
-    var customFrom by rememberSaveable { mutableStateOf<String?>(null) }
-    var customTo by rememberSaveable { mutableStateOf<String?>(null) }
-    var picking by remember { mutableStateOf(0) } // 1 = from, 2 = to
+    var fromStr by rememberSaveable { mutableStateOf(today.minusDays(89).toString()) }
+    var toStr by rememberSaveable { mutableStateOf(today.toString()) }
+    var picking by remember { mutableStateOf(0) } // 1 = start date, 2 = end date
     var drill by remember { mutableStateOf(startAccount) }
     var open by remember { mutableStateOf<com.morphlabs.morph.core.model.Entry?>(null) }
     val firstDay = remember(s) {
         s.entries.filter { it.source != com.morphlabs.morph.core.model.EntrySource.SYSTEM }.minOfOrNull { it.timestamp }
             ?.let { java.time.Instant.ofEpochMilli(it).atZone(s.zone).toLocalDate() } ?: today
     }
-    val rangeEnd = if (preset == "custom") customTo?.let { java.time.LocalDate.parse(it) } ?: today else today
-    val rangeStart = when (preset) {
-        "30" -> today.minusDays(29)
-        "180" -> today.minusDays(179)
-        "365" -> today.minusDays(364)
-        "all" -> firstDay
-        "custom" -> customFrom?.let { java.time.LocalDate.parse(it) } ?: today.minusDays(29)
-        else -> today.minusDays(89)
-    }.let { if (it.isAfter(rangeEnd)) rangeEnd else it }
+    /** Sets the range, keeping start ≤ end ≤ today. */
+    fun setRange(a: java.time.LocalDate, b: java.time.LocalDate, key: String = "custom") {
+        val start = minOf(a, b); val end = minOf(maxOf(a, b), today)
+        fromStr = minOf(start, end).toString(); toStr = end.toString(); preset = key
+    }
+    val presets = listOf(
+        "7" to "7 days", "30" to "30 days", "month" to "This month", "lastmonth" to "Last month",
+        "90" to "3 months", "180" to "6 months", "year" to "This year", "all" to "All time",
+    )
+    fun applyPreset(k: String) = when (k) {
+        "7" -> setRange(today.minusDays(6), today, k)
+        "30" -> setRange(today.minusDays(29), today, k)
+        "month" -> setRange(today.withDayOfMonth(1), today, k)
+        "lastmonth" -> java.time.YearMonth.from(today).minusMonths(1).let { m -> setRange(m.atDay(1), m.atEndOfMonth(), k) }
+        "180" -> setRange(today.minusDays(179), today, k)
+        "year" -> setRange(today.withDayOfYear(1), today, k)
+        "all" -> setRange(firstDay, today, k)
+        else -> setRange(today.minusDays(89), today, k)
+    }
+    val rangeStart = java.time.LocalDate.parse(fromStr)
+    val rangeEnd = java.time.LocalDate.parse(toStr)
+    /** ◀ ▶: move the same-length window earlier or later (whole months stay whole months). */
+    fun shift(dir: Long) {
+        val wholeMonths = rangeStart.dayOfMonth == 1 && (rangeEnd == java.time.YearMonth.from(rangeEnd).atEndOfMonth() || rangeEnd == today)
+        if (wholeMonths) {
+            val months = java.time.temporal.ChronoUnit.MONTHS.between(java.time.YearMonth.from(rangeStart), java.time.YearMonth.from(rangeEnd)) + 1
+            val m = java.time.YearMonth.from(rangeStart).plusMonths(dir * months)
+            setRange(m.atDay(1), m.plusMonths(months - 1).atEndOfMonth())
+        } else {
+            val len = java.time.temporal.ChronoUnit.DAYS.between(rangeStart, rangeEnd) + 1
+            setRange(rangeStart.plusDays(dir * len), rangeEnd.plusDays(dir * len))
+        }
+    }
     val days = (java.time.temporal.ChronoUnit.DAYS.between(rangeStart, rangeEnd) + 1).toInt()
     val p = remember(s) { Patterns(s.accounts, s.entries, s.zone) }
     val key = "$rangeStart..$rangeEnd"
@@ -95,15 +120,21 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
         LazyColumn(Modifier.padding(horizontal = 16.dp)) {
             item {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for ((k, l) in listOf("30" to "30d", "90" to "3m", "180" to "6m", "365" to "Year", "all" to "All")) {
-                        FilterChip(selected = preset == k, onClick = { preset = k }, label = { Text(l) })
-                    }
-                    FilterChip(selected = preset == "custom", onClick = { picking = 1 }, label = { Text("📅 Range") })
+                    for ((k, l) in presets) FilterChip(selected = preset == k, onClick = { applyPreset(k) }, label = { Text(l) })
                 }
-                Text(
-                    "${rangeFmt.format(rangeStart)} – ${rangeFmt.format(rangeEnd)} · $days days · ${Money.format(spentInRange)} spent",
-                    style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(vertical = 6.dp),
-                )
+                Gap(6)
+                // Start and end dates, always visible; tap either to change it.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    DateBox("From", rangeFmt.format(rangeStart), Modifier.weight(1f)) { picking = 1 }
+                    Text("→", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    DateBox("To", rangeFmt.format(rangeEnd), Modifier.weight(1f)) { picking = 2 }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { shift(-1) }, enabled = rangeStart.isAfter(firstDay.minusYears(1))) { Text("◀ Earlier") }
+                    Text("$days days · ${Money.format(spentInRange)} spent", style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { shift(1) }, enabled = rangeEnd.isBefore(today)) { Text("Later ▶") }
+                }
                 MorphCard { Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     val window = spentInRange / days.coerceAtLeast(1)
                     for ((l, v) in listOf("Avg / day" to window, "Avg / week" to window * 7, "Avg / month" to (window * 30.44).toLong())) {
@@ -114,6 +145,11 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
                     }
                 } }
                 Text("Averages over the period above. Every section below follows it too.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                SectionTitle("Where your money went")
+                MorphCard { Column(Modifier.padding(16.dp)) {
+                    com.morphlabs.morph.ui.components.SpendingExplorer(s, today, range = rangeStart to rangeEnd,
+                        rangeName = "${rangeFmt.format(rangeStart)} – ${rangeFmt.format(rangeEnd)}")
+                } }
                 SectionTitle("Spending by month")
                 MorphCard { Column(Modifier.padding(16.dp)) {
                     BarChart(monthly.map { it.label to it.total }) { i ->
@@ -223,14 +259,24 @@ fun PatternsScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, startAccoun
             item { Gap(40) }
         }
     }
-    if (picking == 1) com.morphlabs.morph.ui.components.PickDateDialog(rangeStart, today, onDismiss = { picking = 0 }) { d ->
-        customFrom = d.toString(); picking = 2
-    }
-    if (picking == 2) com.morphlabs.morph.ui.components.PickDateDialog(rangeEnd.coerceAtLeast(rangeStart), today, onDismiss = { picking = 0 }) { d ->
-        customTo = d.toString(); preset = "custom"; picking = 0
-    }
+    if (picking == 1) com.morphlabs.morph.ui.components.PickDateDialog(rangeStart, today, onDismiss = { picking = 0 }) { d -> setRange(d, rangeEnd) }
+    if (picking == 2) com.morphlabs.morph.ui.components.PickDateDialog(rangeEnd, today, onDismiss = { picking = 0 }) { d -> setRange(rangeStart, d) }
     drill?.let { a -> DrillDialog(p, s, a, today, { k, n -> drill = null; who(k, n) }, { drill = null; openList(com.morphlabs.morph.ui.TxFilter(a.label, accountIds = setOf(a.id))) }) { drill = null } }
     open?.let { e -> EntryDialog(repo, s, e) { open = null } }
+}
+
+/** A tappable date: small label on top, the date below, and a calendar icon. */
+@Composable
+private fun DateBox(label: String, date: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    androidx.compose.material3.OutlinedCard(onClick = onClick, modifier = modifier) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(date, fontWeight = FontWeight.SemiBold)
+            }
+            Text("📅")
+        }
+    }
 }
 
 @Composable
