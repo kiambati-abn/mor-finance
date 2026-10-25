@@ -57,7 +57,7 @@ import com.morphlabs.morph.ui.theme.LocalMorph
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit, goLowBudgets: () -> Unit = goBudgets, goAccounts: () -> Unit = {}) {
+fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goBudgets: () -> Unit, goLowBudgets: () -> Unit = goBudgets, goAccounts: () -> Unit = {}, goLearn: () -> Unit = {}) {
     val s = d.s
     var open by remember { mutableStateOf<Entry?>(null) }
     val openList = LocalOpenList.current
@@ -136,6 +136,26 @@ fun HomeScreen(repo: MorphRepo, d: Dashboard, goSort: () -> Unit, goMe: () -> Un
                         Text("One tap each. Fresh ones earn bonus stars.", style = MaterialTheme.typography.bodySmall)
                     }
                     Text("Go →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        item {
+            // Two minutes of learning a day, picked from what's happening in your money.
+            val doneToday = d.today in s.learnDays
+            val streak = com.morphlabs.morph.core.academy.Academy.streak(s.learnDays, d.today)
+            Gap()
+            MorphCard(onClick = goLearn) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("📚", fontSize = 26.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(if (doneToday) "Lesson done ✓" else "Today's lesson", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (doneToday) "🔥 $streak-day learning streak. See you tomorrow." else "5 cards · 2 min" + if (streak > 0) " · 🔥 $streak-day streak" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Text(if (doneToday) "Academy →" else "Learn →", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

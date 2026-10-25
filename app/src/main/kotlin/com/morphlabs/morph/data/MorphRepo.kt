@@ -5,6 +5,9 @@ import android.content.Context
 import android.net.Uri
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import com.morphlabs.morph.core.academy.Academy
+import com.morphlabs.morph.core.academy.Outcome
+import com.morphlabs.morph.core.academy.Progress
 import com.morphlabs.morph.core.budget.Allocation
 import com.morphlabs.morph.core.budget.BudgetMove
 import com.morphlabs.morph.core.defaults.DefaultAccounts
@@ -572,6 +575,41 @@ class MorphRepo private constructor(context: Context) {
 
     fun stars(): Int = snapshot().stars
 
+    // ---- academy --------------------------------------------------------------------------
+
+    fun academyProgress(): Map<String, Progress> =
+        db.rawQuery("SELECT card_id, box, due, seen, right_n, wrong_n FROM academy_progress", null).use { c ->
+            buildMap {
+                while (c.moveToNext()) put(c.getString(0), Progress(c.getString(0), c.getInt(1), c.str(2)?.let { LocalDate.parse(it) }, c.getInt(3), c.getInt(4), c.getInt(5)))
+            }
+        }
+
+    /** Saves one answered card and returns the stars it earned: 1 for the card, 1 more for a right quiz answer. */
+    fun recordCard(cardId: String, outcome: Outcome, quizRight: Boolean = false): Int {
+        val today = dayOf(System.currentTimeMillis())
+        val before = academyProgress()[cardId] ?: Progress(cardId)
+        val p = Academy.review(before, outcome, today)
+        db.insertWithOnConflict("academy_progress", null, ContentValues().apply {
+            put("card_id", p.cardId); put("box", p.box); put("due", p.due?.toString()); put("seen", p.seen)
+            put("right_n", p.right); put("wrong_n", p.wrong)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+        val stars = 1 + if (quizRight) 1 else 0
+        addReward(stars, "learn:$cardId")
+        return stars
+    }
+
+    /** Ends today's lesson: +3 stars the first time each day, which also counts towards the learning streak. */
+    fun finishLesson(): Int {
+        val day = dayOf(System.currentTimeMillis())
+        val first = day !in snapshot().learnDays
+        if (first) addReward(LESSON_BONUS, "$LEARN_PREFIX$day")
+        changed()
+        return if (first) LESSON_BONUS else 0
+    }
+
+    /** Called when you leave the Academy, so stars from cards show up everywhere. */
+    fun academyClosed() = changed()
+
     // ---- budget alerts ----------------------------------------------------------------------
 
     /** Budget alerts on/off (on by default). */
@@ -810,12 +848,15 @@ class MorphRepo private constructor(context: Context) {
         val bonusDays = db.rawQuery("SELECT reason FROM rewards WHERE reason LIKE ?", arrayOf("$BONUS_PREFIX%")).use { c ->
             buildSet { while (c.moveToNext()) add(c.getString(0).removePrefix(BONUS_PREFIX)) }
         }
+        val learnDays = db.rawQuery("SELECT reason FROM rewards WHERE reason LIKE ?", arrayOf("$LEARN_PREFIX%")).use { c ->
+            buildSet { while (c.moveToNext()) runCatching { add(LocalDate.parse(c.getString(0).removePrefix(LEARN_PREFIX))) } }
+        }
         val allocations = db.rawQuery("SELECT id, ts, account_id, amount FROM allocations ORDER BY ts, id", null).use { c ->
             buildList { while (c.moveToNext()) add(Allocation(c.getLong(0), c.getLong(1), c.getLong(2), c.getLong(3))) }
         }
         val envStart = meta(KEY_ENVELOPES_START)?.toLongOrNull()
         val cashDone = meta(KEY_CASH_DONE)?.split(',')?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet()
-        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", cashDone, startDate, stars, bonusDays, zone)
+        return Snapshot(accounts, entries, moves, allocations, envStart, meta(KEY_BUDGET_VIEW) == "1", cashDone, startDate, stars, bonusDays, zone, learnDays)
     }
 
     private fun Cursor.str(i: Int): String? = if (isNull(i)) null else getString(i)
@@ -833,6 +874,8 @@ class MorphRepo private constructor(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_LAST_SMS = "last_sms_date"
         private const val BONUS_PREFIX = "inbox-zero:"
+        private const val LEARN_PREFIX = "learn-day:"
+        private const val LESSON_BONUS = 3
         /** Stored after BONUS_PREFIX, so bonusDays holds "day-done:2026-10-24" for the daily bonus. */
         private const val DAY_PREFIX = "day-done:"
         private const val KEY_BACKUP_URI = "backup_uri"

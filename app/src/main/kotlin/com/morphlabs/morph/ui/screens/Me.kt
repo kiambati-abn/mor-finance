@@ -52,7 +52,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit) {
+fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () -> Unit, goPatterns: () -> Unit, goLearn: () -> Unit = {}) {
     val s = d.s
     val ctx = LocalContext.current
     val openList = com.morphlabs.morph.ui.LocalOpenList.current
@@ -275,6 +275,7 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
             SectionTitle("Settings")
             MorphCard {
                 Column(Modifier.padding(vertical = 4.dp)) {
+                    SettingRow("📚  Morph Academy: learn money, 2 min a day", goLearn)
                     SettingRow("🔍  Patterns: deep look at your money", goPatterns)
                     SettingRow("🗂️  Accounts & budgets", goAccounts)
                     SettingRow("📜  All transactions", goAll)

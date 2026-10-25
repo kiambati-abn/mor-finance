@@ -192,6 +192,10 @@ One period controls every section: 30d · 3m · 6m · Year · All, or **📅 Ran
 | Unusual spends | What was far bigger than normal for its category (3× the median)? |
 | After money comes in | How much of what arrives is gone within 3 days? |
 
+## Morph Academy
+
+A daily lesson of 5 cards (about 2 minutes) from the Home card or Me. Cards about what's happening in your money come first, then reviews you're about to forget (spaced 1/3/7/21/60 days), then new cards. Each card ends with a *Try this* step. Stars, a learning streak, Money IQ and a freedom stage. Details: [ACADEMY.md](ACADEMY.md).
+
 ## Later
 
 - **Financial tips:** a short tip of the day based on your own numbers, plus a weekly "lesson".

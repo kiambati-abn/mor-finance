@@ -44,7 +44,7 @@ import java.time.LocalDate
 
 enum class Tab(val label: String, val emoji: String) { HOME("Home", "🏠"), SORT("Sort", "⭐"), ENVELOPES("Budgets", "✉️"), ME("Me", "🦋") }
 
-enum class Page { ACCOUNTS, TRANSACTIONS, PATTERNS }
+enum class Page { ACCOUNTS, TRANSACTIONS, PATTERNS, LEARN }
 
 private data class Root(val snapshot: Snapshot, val onboarded: Boolean, val theme: String)
 
@@ -98,6 +98,18 @@ private fun MainBody(
         Page.ACCOUNTS -> { AccountsScreen(repo, s, onBack = { setPage(null) }); return }
         Page.TRANSACTIONS -> { TransactionsScreen(repo, s, onBack = { setPage(null) }); return }
         Page.PATTERNS -> { PatternsScreen(repo, s, onBack = { setPage(null) }); return }
+        Page.LEARN -> {
+            com.morphlabs.morph.ui.screens.LearnScreen(repo, s, onBack = { setPage(null) }) { a ->
+                when (a) {
+                    com.morphlabs.morph.core.academy.Action.BUDGETS -> { budgetsFilter = "all"; setTab(Tab.ENVELOPES); setPage(null) }
+                    com.morphlabs.morph.core.academy.Action.ACCOUNTS -> setPage(Page.ACCOUNTS)
+                    com.morphlabs.morph.core.academy.Action.PATTERNS -> setPage(Page.PATTERNS)
+                    com.morphlabs.morph.core.academy.Action.AUTOSORT -> { setTab(Tab.ME); setPage(null) }
+                    com.morphlabs.morph.core.academy.Action.NONE -> Unit
+                }
+            }
+            return
+        }
         null -> Unit
     }
 
@@ -125,10 +137,10 @@ private fun MainBody(
             when (tab) {
                 Tab.HOME -> HomeScreen(repo, dash, goSort = { setTab(Tab.SORT) }, goMe = { setTab(Tab.ME) }, goAll = { setPage(Page.TRANSACTIONS) },
                     goPatterns = { setPage(Page.PATTERNS) }, goBudgets = { budgetsFilter = "all"; setTab(Tab.ENVELOPES) },
-                    goLowBudgets = { budgetsFilter = "low"; setTab(Tab.ENVELOPES) }, goAccounts = { setPage(Page.ACCOUNTS) })
+                    goLowBudgets = { budgetsFilter = "low"; setTab(Tab.ENVELOPES) }, goAccounts = { setPage(Page.ACCOUNTS) }, goLearn = { setPage(Page.LEARN) })
                 Tab.SORT -> SortScreen(repo, s)
                 Tab.ENVELOPES -> androidx.compose.runtime.key(budgetsFilter) { EnvelopesScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, startFilter = budgetsFilter) }
-                Tab.ME -> MeScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, goAll = { setPage(Page.TRANSACTIONS) }, goPatterns = { setPage(Page.PATTERNS) })
+                Tab.ME -> MeScreen(repo, dash, goAccounts = { setPage(Page.ACCOUNTS) }, goAll = { setPage(Page.TRANSACTIONS) }, goPatterns = { setPage(Page.PATTERNS) }, goLearn = { setPage(Page.LEARN) })
             }
         }
     }

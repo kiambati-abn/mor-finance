@@ -38,6 +38,8 @@ class Snapshot(
     val stars: Int,
     val bonusDays: Set<String>,
     val zone: ZoneId,
+    /** Days with a finished Academy lesson. */
+    val learnDays: Set<java.time.LocalDate> = emptySet(),
 ) {
     val byId: Map<Long, Account> = accounts.associateBy { it.id }
     val raw: Map<Long, Long> by lazy { Balances.raw(entries) }
@@ -129,7 +131,7 @@ class Snapshot(
         r.opening + r.gaps.sumOf { it.amount }
     }
 
-    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, cashDone, startDate, stars, bonusDays, zone)
+    fun with(entry: Entry): Snapshot = Snapshot(accounts, entries + entry, moves, allocations, envelopesStart, budgetView, cashDone, startDate, stars, bonusDays, zone, learnDays)
 
     /** Recent cash withdrawals with money not yet said what it's for: (withdrawal, still unspread). */
     val cashToSpread: List<Pair<Entry, Long>> by lazy {

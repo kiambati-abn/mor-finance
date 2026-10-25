@@ -1,4 +1,4 @@
-# Morph Academy: curriculum & starter cards (draft for review)
+# Morph Academy: curriculum & cards
 
 A daily 2-minute game inside Morph for understanding money deeply: personal finance, investing,
 **financial freedom**, building businesses, and judging deals Shark-Tank style.
@@ -7,15 +7,30 @@ A daily 2-minute game inside Morph for understanding money deeply: personal fina
 > rates and rules change, so anything time-sensitive is marked **(check current)**.
 > Researched October 2026.
 
-## How it plays
+## How it plays (built, v1)
 
-- **Daily:** 3–5 cards in about 2 minutes. You rate each card: *Knew it* · *Unsure* · *No idea*. That decides when it comes back (spaced repetition: 1 day → 3 → 7 → 21 → 60).
-- **Weekly:** one **Shark Tank case** (a pitch with numbers, then: would you invest, and at what valuation?).
+Open it from the **📚 Today's lesson** card on Home, or **Me → Morph Academy**.
+
+- **Daily lesson: 5 cards, about 2 minutes.** They're picked in this order:
+  1. **Just in time:** one new card about something happening in *your* money right now (Fuliza used this week, money just came in, high fees this month, a big spend, debts, no safety buffer, a low savings rate). Learning is most useful right before you use it, because education that isn't used fades fast.
+  2. **Reviews:** up to 3 cards you're about to forget, most overdue first.
+  3. **New cards** from the tracks you've opened, in order.
 - **Three card types:**
-  - **Concept**: a question, then a short answer with a Kenyan example.
-  - **Scenario**: numbers and a decision, then the reasoning.
-  - **You**: built from your own Morph data ("Your savings rate last month was 6%…").
-- **Rewards:** the same stars and streak as Sort, plus a **Money IQ** bar per track. Tracks unlock in order, but you can peek ahead.
+  - **Quiz:** pick an answer. You see right away whether it was right, and why.
+  - **Concept:** think of your answer, tap *Show answer*, then rate yourself: 😕 *No idea* · 🤔 *Sort of* · 😎 *Knew it*.
+  - **📊 You:** built from your own numbers ("You paid Ksh 420 in fees this month, about Ksh 15,000 a year"). Morph only shows one when it has the numbers it needs.
+- **Spaced repetition:** your answer decides when a card comes back: 1 → 1 → 3 → 7 → 21 → 60 days. *No idea* starts it over, and *Sort of* keeps it close. Retrieval with feedback, spaced out, is one of the best-proven ways to remember.
+- **👉 Try this:** most cards end with one small real step. Many have an **Open →** button that takes you to Budgets, Accounts or Patterns, so the lesson turns into action.
+- **Rewards:**
+  - +1 ⭐ per card and +1 for a right quiz answer.
+  - +3 ⭐ and a 🔥 learning-streak day for finishing the daily lesson. Extra rounds still earn stars.
+  - **Money IQ** (0–100) and a mastery bar per track. A card counts fully once you've known it 3 times in a row.
+- **Tracks unlock in order:** the next one opens when you've seen half of the one before. Cards about your own money skip the queue.
+- **🦋 Freedom stage** is shown at the top: Steady → Debt-free → Safety net → Growing → Choice → Free, worked out from your savings, debts, fixed costs and net worth.
+- Cards with figures that change (rates, fees, tax) carry **⏳ Check current rates**.
+- Progress is saved in your backups. **Start over** in Me doesn't erase what you've learned.
+
+**Later (not built yet):** a weekly Shark Tank case, a 🚀 Business fund with runway, and a problem journal.
 
 ## The path (8 tracks)
 
@@ -206,19 +221,15 @@ A daily 2-minute game inside Morph for understanding money deeply: personal fina
 
 ---
 
-## Card format (for building it into Morph)
+## How it's built
 
-```
-id:        free-03
-track:     financial_freedom
-type:      concept | scenario | you
-question:  "Your freedom number?"
-answer:    "Yearly spending × 25 ..."
-example:   "Spend Ksh 600,000 a year → Ksh 15M"
-uses:      [spend_year, net_worth]      # for "you" cards: Morph numbers it fills in
-check:     "rates change: check current" # shown on time-sensitive cards
-source:    <link>
-```
+- `core/.../academy/Deck.kt`: every card (id, track, kind, question, answer, options, the *Try this* step, signals, ⏳ flag). YOU cards use placeholders such as `{fees_month}`, `{savings}`, `{freedom_number}`, `{runway}` and `{stage}`.
+- `core/.../academy/Academy.kt`: the rules (spacing boxes, today's session, unlocking, mastery, Money IQ, streak, filling placeholders).
+- `core/.../academy/MoneyFacts.kt`: turns your numbers into placeholder values, your freedom stage and the money signals.
+- `app/.../data/AcademyData.kt`: reads those numbers from your ledger. `academy_progress` table (DB v5).
+- Tests: `core/src/test/.../academy/AcademyTest.kt`.
+
+To add a card, add one line to `Deck.kt` with a new unique id. Tests check the ids and quiz answers.
 
 ## Sources
 

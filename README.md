@@ -6,6 +6,7 @@ earns stars and teaches it your habits.
 
 - **Automatic:** every M-Pesa message (send, paybill, till, withdraw, airtime, Fuliza, M-Shwari, reversals) becomes a journal entry, with fees split out.
 - **One tap:** a notification right after you pay: *"Ksh 200 → LAKEWOOD HOTEL. What was it?"* with your likely answers as buttons.
+- **Teaches:** Morph Academy: 5 cards a day (2 min) on money, Kenyan tools, investing, financial freedom and building a business, picked from what's happening in your own money.
 - **Learns:** after you file the same person/till/paybill twice the same way, Morph files it for you. It also learns your habits (amount + time of day).
 - **Budgets:** daily or monthly amounts on any account: limits for spending, targets for savings, repayment plans for debts. Move budget between envelopes without touching real money.
 - **Feedback:** weekly insights from your own numbers (fees, small repeated payments, weekend habits, 50/30/20 split, emergency fund, runway).
