@@ -60,7 +60,12 @@ import com.morphlabs.morph.ui.today
 fun LearnScreen(repo: MorphRepo, s: Snapshot, onBack: () -> Unit, go: (Action) -> Unit) {
     val day = today(repo)
     var progress by remember { mutableStateOf(repo.academyProgress()) }
-    val data = remember(s) { s.academyData(day) }
+    // If your numbers can't be worked out, the Academy still opens: it just skips the 📊 cards.
+    val data = remember(s) {
+        runCatching { s.academyData(day) }.getOrElse {
+            com.morphlabs.morph.data.AcademyData(com.morphlabs.morph.core.academy.MoneyNumbers(), emptyMap(), emptySet())
+        }
+    }
     var lesson by remember { mutableStateOf<List<Card>?>(null) }
     var earned by remember { mutableIntStateOf(0) }
     var celebrate by remember { mutableStateOf(false) }

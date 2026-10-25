@@ -127,12 +127,15 @@ object Academy {
     /** Fills {placeholders} from your numbers; null when a needed number is missing. */
     fun fill(text: String, facts: Map<String, String>): String? {
         var out = text
-        for (m in Regex("""\{(\w+)}""").findAll(text)) {
+        for (m in placeholder.findAll(text)) {
             val v = facts[m.groupValues[1]] ?: return null
             out = out.replace(m.value, v)
         }
         return out
     }
+
+    // Both braces escaped: Android's regex engine rejects a bare "}" (the JVM doesn't, so tests can't catch it).
+    private val placeholder = Regex("""\{(\w+)\}""")
 
     fun daysBetween(a: LocalDate, b: LocalDate): Long = ChronoUnit.DAYS.between(a, b)
 }
