@@ -149,11 +149,13 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                 Column(Modifier.padding(16.dp)) {
                     if (repo.backupUri == null) {
                         Text("☁️ Automatic backup is off", fontWeight = FontWeight.SemiBold)
-                        Text("Pick a file once, ideally on Google Drive. Morph updates it every day. On a new phone: install Morph → \"I have a backup\".",
+                        Text("Pick a file once, ideally on Google Drive. Morph then updates it on its own (daily, weekly or monthly; you choose). On a new phone: install Morph → \"I have a backup\".",
                             style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { autoLauncher.launch("morph-backup.json") }) { Text("Turn on automatic backup") }
                     } else {
-                        val last = repo.lastBackup
+                        // Local state so the chips and "Last backup" update the moment you tap.
+                        var every by remember { mutableStateOf(repo.backupEveryDays) }
+                        var last by remember { mutableStateOf(repo.lastBackup) }
                         Text(if (last > 0) "☁️ Last backup: ${com.morphlabs.morph.ui.components.whenText(last, s.zone)}" else "☁️ Waiting for the first backup",
                             fontWeight = FontWeight.SemiBold)
                         repo.backupError?.let { Text("Last try failed: $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -161,13 +163,19 @@ fun MeScreen(repo: MorphRepo, d: Dashboard, goAccounts: () -> Unit, goAll: () ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("How often", style = MaterialTheme.typography.labelLarge)
                             for ((n, l) in listOf(1 to "Daily", 7 to "Weekly", 30 to "Monthly")) {
-                                FilterChip(selected = repo.backupEveryDays == n, onClick = { repo.backupEveryDays = n }, label = { Text(l) })
+                                FilterChip(selected = every == n, onClick = { every = n; Thread { repo.backupEveryDays = n }.start() }, label = { Text(l) })
                             }
                         }
+                        Text(
+                            "Automatic: Morph checks once a day in the background (even after a restart) and whenever you open it, and backs up when your choice is due. " +
+                                "It tells you if a backup fails.",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Row {
                             TextButton(onClick = {
                                 scope.launch {
                                     val err = withContext(Dispatchers.IO) { repo.backupNow() }
+                                    last = repo.lastBackup
                                     Toast.makeText(ctx, err ?: "Backed up ✓", Toast.LENGTH_SHORT).show()
                                 }
                             }) { Text("Back up now") }
